@@ -42,12 +42,16 @@ def rej_loss(true_label, expert_label, c):
             return 1.0
                      
 
+def exp_hyp_label(data, expert):
+    if expert[0] + expert[1] <= data:
+        expert_label = 1
+    else:
+        expert_label = 0
+    return expert_label
+
 def exp_label(data, expert):
     if expert[0] < data:
-        if expert[0] + expert[1] <= data:
-            expert_label = 1
-        else:
-            expert_label = 0
+        expert_label = exp_hyp_label(data, expert)
     else:
        expert_label = -1
     return expert_label
@@ -126,88 +130,54 @@ def ucbn(c, alpha, experts, dat):
     return loss_alg / T 
 
 
-# def ucbd(c, alpha, experts, dat):
-#     K = len(experts)
-#     T = len(dat)
-# 
-#     # expert_avg = []
-#     # expert_prob_rej = []
-#     # expert_prob_acc = []
-# 
-#     hyp_expert_avg = {} #only care of emperical average over hyp_experts.
-#     expert_prob_acc = {}  # empirical probability of expert accepting
-#     expert_prob_rej = {}  # empirical probability of expert rejecting
-# 
-#     expert_pulls = [] #counts the number of times when r>0
-# 
-#     #initialization step
-#     for i in range(K):
-#         expert_label = exp_label(dat[i][0], experts[i])
-#         if expert_label != -1:
-#             hyp_expert_avg[str(i)] = rej_loss(dat[i][1], expert_label, c)  #prob should define zero/one loss and use it here
-#             expert_prob_acc[str(i)] = 1
-#             expert_pulls.append(1)
-#         else:
-#             expert_pulls.append(0)
-#     
-#     regret=0
-# 
-#     for t in range(K, T):
-#         #use dictionary so keep track of which are accepting and rejecting experts at time t
-#         acc_exp = {}  
-#         rej_exp = {}
-# 
-#         save_expert_labels=[]
-#         for i in range(K):
-#             #separate rejecting and accepting experts according to their label (not really kosher but essence the same)
-#             expert_label = exp_label(dat[t][0], experts[i])
-#             save_expert_labels.append(expert_label)
-#             if expert_label!=-1:
-#                 if str(i) in hyp_expert_avg.keys():
-#                     acc_exp[str(i)] = hyp_expert_avg[str(i)] - lcb_bound(t,expert_pulls[i],alpha)
-#                 else:
-#                     acc_exp[str(i)] = -float("inf")  #if you never pulled an arm before the LCB is -inf
-#             else:
-#                 if str(i) in hyp_expert_avg.keys():
-#                     rej_exp[str(i)] = hyp_expert_avg[str(i)] - lcb_bound(t,expert_pulls[i],alpha)
-#                 else:
-#                     rej_exp[str(i)] = -float("inf")
-#                     
-# 
-#         #find best arm
-#         if bool(acc_exp) == True and acc_exp[min(acc_exp, key=acc_exp.get)] < c:
-#                 best_arm = int(min(acc_exp, key=acc_exp.get))
-#         else:
-#             if bool(rej_exp) == True:
-#                 best_arm = int(min(rej_exp, key=rej_exp.get))
-#             else:
-#                 best_arm = int(min(acc_exp, key=acc_exp.get))
-# 
-# #        minkey=min(acc_exp,key=acc_exp.get)
-# #        if acc_exp[minkey]<c:
-# #            best_arm=int(minkey)
-# #        else:
-# #            #reject. 
-# #            best_arm=int(min(rej_exp,key=rej_exp.get))
-# 
-#         #update regret
-#         best_expert_label = save_expert_labels[best_arm]
-#         expert_loss = rej_loss(dat[t][1], best_expert_label, c) #technically you are calculate loss of best expert twice but meh
-#         #print best_arm, expert_loss,expert_pulls[best_arm]
-#         regret += expert_loss
-#         
-#         if best_expert_label != -1:
-#             # if pulled a nonrej expert update all acc_experts
-#             for jj in range(len(save_expert_labels)):
-#                 if save_expert_labels[jj] != -1:
-#                         if str(jj) in hyp_expert_avg.keys():
-#                             expert_pulls[jj] += 1
-#                             inv_pull = 1.0 / expert_pulls[jj]
-#                             hyp_expert_avg[str(jj)] = rej_loss(dat[t][1], save_expert_labels[jj], c) * inv_pull + (1.0 - inv_pull) * hyp_expert_avg[str(jj)]
-#                         else:
-#                             expert_pulls[jj] += 1
-#                             hyp_expert_avg[str(jj)] = rej_loss(dat[t][1], save_expert_labels[jj], c)
-#     return (regret - reg_best) / T
+def ucbd(c, alpha, experts, dat):
+    K = len(experts)
+    T = len(dat)
+
+    expert_cnt_acc = [0.0] * K
+    expert_pulls = [0.0] * K
+    expert_hyp_losses = [0.0] * K
+    loss_alg = 0
+
+    #initialization step
+    for i in range(K):
+        expert_label = exp_hyp_label(dat[i][0], experts[i])  # explicitly accept
+        for j in range(K):
+            if exp_label(dat[i][0], experts[j]) != -1:
+                expert_cnt_acc[j] += 1
+            expert_pulls[j] += 1  # always increment upon accept
+        expert_hyp_loss = rej_loss(dat[i][1], expert_label, c)
+        expert_hyp_losses[i] += expert_hyp_loss
+        loss_alg += expert_hyp_loss
+
+    for t in range(K, T):
+
+        # aggregate lcbs
+        expert_lcbs = []
+        for i in range(K):
+            exp_prob_acc = expert_cnt_acc[i] / t
+            exp_prob_rej = 1 - exp_prob_acc
+            expert_lcbs.append((exp_prob_acc - lcb_bound(t, t, alpha)) * ((expert_hyp_losses[i] / expert_pulls[i]) - lcb_bound(t, expert_pulls[i], alpha)) + (exp_prob_rej - lcb_bound(t, t, alpha)) * c) 
+        
+        #find best arm
+        best_arm = expert_lcbs.index(min(expert_lcbs)) 
+        
+        #update algorithm loss
+        expert_label = exp_label(dat[t][0], experts[best_arm])
+        expert_loss = rej_loss(dat[t][1], expert_label, c) 
+        loss_alg += expert_loss
+
+        # update slacks and empirical averages
+        for i in range(K):
+            if exp_label(dat[t][0], experts[i]) != -1:  # expert i accepts
+                expert_cnt_acc[i] += 1
+        if expert_label != -1:  # so that we see the label
+            for i in range(K):
+                expert_pulls[i] += 1
+                current_label = exp_hyp_label(dat[t][0], experts[i])
+                current_loss = rej_loss(data[t][1], current_label, c)
+                expert_hyp_losses[i] += current_loss 
+    return loss_alg / T 
 
        
 def ucbh(c, alpha, experts, dat):
@@ -345,13 +315,15 @@ if __name__ == "__main__":
     avgloss_ucb = ucb(c, alpha, experts, data)
     avgloss_ucbn = ucbn(c, alpha, experts, data)
     avgloss_ucbh = ucbh(c, alpha, experts, data)
+    avgloss_ucbd = ucbd(c, alpha, experts, data)
     reg1 = avgloss_ucb - avgloss_best
     reg2 = avgloss_ucbn - avgloss_best
     reg3 = avgloss_ucbh - avgloss_best
+    reg4 = avgloss_ucbd - avgloss_best
 
     print "loss best arm " + str(avgloss_best)
-    print "loss of UCB " + str(avgloss_ucb) + ", loss of UCB-N " + str(avgloss_ucbn) + ", regret of UCB-H " + str(avgloss_ucbh) 
-    print "regret of UCB " + str(reg1) + ", regret of UCB-N " + str(reg2) + ", regret of UCB-H " + str(reg3) 
+    print "loss of UCB " + str(avgloss_ucb) + ", loss of UCB-N " + str(avgloss_ucbn) + ", loss of UCB-H " + str(avgloss_ucbh) + ", loss of UCB-D " + str(avgloss_ucbd)
+    print "regret of UCB " + str(reg1) + ", regret of UCB-N " + str(reg2) + ", regret of UCB-H " + str(reg3) + ", regret of UCB-D " + str(reg4)
     
     if int(sys.argv[3]) == 1:
         c_values=[0.05, 0.4]
