@@ -8,28 +8,33 @@ import matplotlib.pyplot as plt
 random.seed(1234)
 
 ############# ############# ############# ############# #############  HELPER FUNCTIONS ############# ############# ############# ############# ############# 
-def create_experts_and_data(K, T):
-    #creating data according to gaussian and labels
-    x_data = [random.gauss(0.6, 0.1) for itr in range(T)]
-    y_labels = [ int(itr >= 0.6)  for itr in x_data]
-    data = zip(x_data, y_labels)  #data format is list of tuple [(x1,y1),(x2,y2)....]
-
+def create_experts(K):
     #creating the rejecting and hypothesis experts according to threholds
     rej_experts = [random.uniform(0.0, 1.0) for itr in range(K-1)] # reject if rej_experts[i] < data, 
     hyp_experts = [random.uniform(0.0, 0.3) for itr in range(K-1)]  # classification surface is given by threhold rej_expert[i]+hyp_expert[i]
     experts = zip(rej_experts, hyp_experts) #expert format is list of tuple [(rej_threshold1, hyp_threshold1),(rej_threshold2, hyp_threshold2).... ]    
-    return experts, data
+    return experts
+
+def create_data(T):
+    #creating data according to gaussian and labels
+    x_data = [random.gauss(0.6, 0.1) for itr in range(T)]
+    y_labels = [ int(itr >= 0.6)  for itr in x_data]
+    data = zip(x_data, y_labels)  #data format is list of tuple [(x1,y1),(x2,y2)....]
+    return data
+
 
 def lcb_bound(current_time, pull, alpha):
     return math.sqrt((alpha / 2)* math.log(current_time) / pull)
 
+def loss_of_best_expert(dat,experts,c):
+    return min(loss_of_every_expert(dat, experts, c))
 
-def loss_of_best_expert(dat, experts, c):
+def loss_of_every_expert(dat, experts, c):
     loss_expert = [0] * len(experts)
     for t in range(len(dat)):
         for i in range(len(experts)):
             loss_expert[i] += rej_loss(dat[t][1], exp_label(dat[t][0], experts[i]), c)
-    return min(loss_expert)
+    return loss_expert
 
 
 def rej_loss(true_label, expert_label, c):
@@ -59,7 +64,7 @@ def exp_label(data, expert):
 
 ############# ############# ############# ############# ALGORITHMS ############# ############# ############# ############# ############# ############# 
 
-def ucb(c, alpha, experts, dat,loss_best): 
+def ucb(c, alpha, experts, dat): 
 
     K=len(experts)
     T=len(dat)
@@ -93,10 +98,10 @@ def ucb(c, alpha, experts, dat,loss_best):
         #update regret
         loss_alg += expert_loss
 
-    return (loss_alg-loss_best) / T , count_rej/float(T)
+    return loss_alg / float(T) , count_rej/float(T)
 
 
-def ucbn(c, alpha, experts, dat,loss_best):
+def ucbn(c, alpha, experts, dat):
     K = len(experts)
     T = len(dat)
 
@@ -138,10 +143,10 @@ def ucbn(c, alpha, experts, dat,loss_best):
                 inv_pull = 1.0 / expert_pulls[i]
                 current_loss = rej_loss(dat[t][1], exp_label(dat[t][0], experts[i]), c) 
                 expert_avg[i] = current_loss * inv_pull + (1 - inv_pull) * expert_avg[i]
-    return (loss_alg-loss_best) / T,count_rej /float(T) 
+    return loss_alg / float(T),count_rej /float(T) 
 
 
-def ucbd(c, alpha, experts, dat, loss_best):
+def ucbd(c, alpha, experts, dat):
     K = len(experts)
     T = len(dat)
 
@@ -193,10 +198,10 @@ def ucbd(c, alpha, experts, dat, loss_best):
                 current_label = exp_hyp_label(dat[t][0], experts[i])
                 current_loss = rej_loss(dat[t][1], current_label, c)
                 expert_hyp_losses[i] += current_loss 
-    return (loss_alg-loss_best) / T , count_rej/float(T)
+    return loss_alg/ float(T) , count_rej/float(T)
 
        
-def ucbh(c, alpha, experts, dat,loss_best):
+def ucbh(c, alpha, experts, dat):
     K = len(experts)
     T = len(dat)
 
@@ -268,79 +273,115 @@ def ucbh(c, alpha, experts, dat,loss_best):
                             hyp_expert_avg[str(jj)] = rej_loss(dat[t][1], save_expert_labels[jj], c)
 
 
-    return (loss_alg -loss_best)/ T, count_rej/float(T)
+    return loss_alg / float(T), count_rej/float(T)
 
 ############# ############# ############# ############# #############  PLOTTING ############# ############# ############# ############# ############# 
 def plotting(c,alpha,K,text_file):
 #NEED TO IMRPOVE THIS PLOTTING FUNCTION BC IT SUCKS
-        #for plotting
-        regret=[]
-        regret_std=[]
-        count_rejection=[]
+    NUM_AVG=5
+    avg_regret=[]
+    avg_counts=[]
+    avg_losses=[]
+    for er in range(NUM_AVG):
+                #for plotting
+            loss=[]
+            count_rejection=[]
+            expert_loss=[]
+            x=range(200,5000,200) #maybe use T instead?
+            for rounds in x:
+                loss_at_t=[]
+                count_at_t=[]
+                expert_loss_at_t=[]
+                experts= create_experts(K)
 
-        x=range(200,800,200) #maybe use T instead?
-        for val in x:
-            regret_at_t=[]
-            count_at_t=[]
+                for p in range(10):
+                        data=create_data(rounds)
+                        loss_experts=loss_of_every_expert(data,experts,c)                
+                        loss1,countrej1=ucb(c,alpha,experts,data)
+                        loss2,countrej2=ucbn(c,alpha,experts,data)
+                        loss3,countrej3=ucbh(c,alpha,experts,data)
+                        loss4,countrej4=ucbd(c,alpha,experts,data)
+                        expert_loss_at_t.append(loss_experts)
+                        loss_at_t.append([loss1,loss2,loss3,loss4 ])
+                        count_at_t.append([countrej1,countrej2,countrej3,countrej4])
 
-            for p in range(2):
-                experts, data = create_experts_and_data(K,val)
-                reg_best=loss_of_best_expert(data,experts,c)
-                regret1,countrej1=ucb(c,alpha,experts,data,reg_best)
-                regret2,countrej2=ucbn(c,alpha,experts,data,reg_best)
-                regret3,countrej3=ucbh(c,alpha,experts,data,reg_best)
-                regret4,countrej4=ucbd(c,alpha,experts,data,reg_best)
-                
-                regret_at_t.append([regret1,regret2,regret3,regret4 ])
-                count_at_t.append([countrej1,countrej2,countrej3,countrej4])
-
-
-            regret_at_t=np.array(regret_at_t)
-            regret.append(np.mean(regret_at_t,axis=0 ))
-            regret_std.append(np.std(regret_at_t,axis=0 ))
-            count_rejection.append(np.mean(np.array(count_at_t),axis=0))
+                        
+                loss_at_t=np.array(loss_at_t)
+                loss.append(np.mean(loss_at_t,axis=0 ))
+                count_rejection.append(np.mean(np.array(count_at_t),axis=0))
+                expert_loss.append(np.mean(np.array(expert_loss_at_t)/float(rounds),axis=0))
 
 
-    
+
+            loss=np.array(loss)
+            count_rejection=np.array(count_rejection)
+
+            expert_loss=np.array(expert_loss)
+            best_expert_loss=np.amin(expert_loss,axis=1)
+
+            regret=loss-np.expand_dims(best_expert_loss,axis=1)
             
-        regret=np.array(regret)
-        regret_std=np.array(regret_std)
-        count_rejection=np.array(count_rejection)
-        text_file.write('\nExpected Regret of UCB-type Algorithms for '+str(K)+' arms with c '+str(c))
-        text_file.write('; avg UCB:'+str(regret[:,0])+'; std UCB:'+str(regret_std[:,0]))
-        text_file.write('; avg UCBN:'+str(regret[:,1])+'; std UCBN:'+str(regret_std[:,1]))
-        text_file.write('; avg UCBH:'+str(regret[:,2])+'; std UCBH:'+str(regret_std[:,2]))
-        text_file.write('; avg UCBD:'+str(regret[:,3])+'; std UCBD:'+str(regret_std[:,3]))
-        text_file.write('; count UCB:'+str(count_rejection[:,0]))
-        text_file.write('; count UCBN:'+str(count_rejection[:,1]))
-        text_file.write('; count UCBH:'+str(count_rejection[:,2]))
-        text_file.write('; count UCBD:'+str(count_rejection[:,3]))
+            avg_regret.append(regret)
+            avg_losses.append(loss)
+            avg_counts.append(count_rejection)
+    
+    std_regret=np.std(np.array(avg_regret),axis=0)
+    avg_regret=np.mean(np.array(avg_regret),axis=0)
+    std_losses=np.std(np.array(avg_losses),axis=0)
+    avg_losses=np.mean(np.array(avg_losses),axis=0)
+    std_counts=np.std(np.array(avg_counts),axis=0)
+    avg_counts=np.mean(np.array(avg_counts),axis=0)
 
 
-        fig, ax = plt.subplots()
-        ax.errorbar(x, regret[:,0], yerr=regret_std[:,0],fmt='r-', label='UCB')
-        ax.errorbar(x, regret[:,1], yerr=regret_std[:,1],fmt='k-', label='UCB-N')
-        ax.errorbar(x, regret[:,2], yerr=regret_std[:,2],fmt='b-', label='UCB-H')
-        ax.errorbar(x, regret[:,3], yerr=regret_std[:,3],fmt='g-', label='UCB-D')
-        legend = ax.legend(loc='upper right', shadow=True)
-        plt.xlabel('Rounds')
-        plt.ylabel('Expected Regret')
-        plt.title('Expected Regret of UCB-type Algorithms for '+str(K)+' arms with c '+str(c))
-        plt.savefig('./figures/regret_K'+str(K)+'_c'+str(c)+'.png')
 
-        fig, ax = plt.subplots()
-        plt.ylim(ymin=-0.05)
-        ax.plot(x, count_rejection[:,0], 'r-', label='UCB')
-        ax.plot(x, count_rejection[:,1], 'k-', label='UCB-N')
-        ax.plot(x, count_rejection[:,2], 'b-', label='UCB-H')
-        ax.plot(x, count_rejection[:,3], 'g-', label='UCB-D')
-        legend = ax.legend(loc='upper right', shadow=True)
-        plt.xlabel('Rounds')
-        plt.ylabel('Count Rejections')
-        plt.title('Count Rejections of UCB-type Algorithms for '+str(K)+' arms with c '+str(c))
-        plt.savefig('./figures/countrej_K'+str(K)+'_c'+str(c)+'.png')
+    text_file.write('\nPseudo Regret of UCB-type Algorithms for '+str(K)+' arms with c '+str(c))
+    text_file.write('; regret UCB:'+str(avg_regret[:,0])+'; std UCB:'+str(std_regret[:,0]))
+    text_file.write('; regret UCBN:'+str(avg_regret[:,1])+'; std UCBN:'+str(std_regret[:,1]))
+    text_file.write('; regret UCBH:'+str(avg_regret[:,2])+'; std UCBH:'+str(std_regret[:,2]))
+    text_file.write('; regret UCBD:'+str(avg_regret[:,3])+'; std UCBD:'+str(std_regret[:,3]))
+    text_file.write('; losses UCB:'+str(avg_losses[:,0])+'; std UCB:'+str(std_losses[:,0]))
+    text_file.write('; losses UCBN:'+str(avg_losses[:,1])+'; std UCBN:'+str(std_losses[:,1]))
+    text_file.write('; losses UCBH:'+str(avg_losses[:,2])+'; std UCBH:'+str(std_losses[:,2]))
+    text_file.write('; losses UCBD:'+str(avg_losses[:,3])+'; std UCBD:'+str(std_losses[:,3]))
+    text_file.write('; counts UCB:'+str(avg_counts[:,0])+'; std UCB:'+str(std_counts[:,0]))
+    text_file.write('; counts UCBN:'+str(avg_counts[:,1])+'; std UCBN:'+str(std_counts[:,1]))
+    text_file.write('; counts UCBH:'+str(avg_counts[:,2])+'; std UCBH:'+str(std_counts[:,2]))
+    text_file.write('; counts UCBD:'+str(avg_counts[:,3])+'; std UCBD:'+str(std_counts[:,3]))
 
 
+
+    fig, ax = plt.subplots()
+    ax.errorbar(x, avg_regret[:,0], yerr=std_regret[:,0],fmt='r-', label='UCB')
+    ax.errorbar(x, avg_regret[:,1], yerr=std_regret[:,1],fmt='k-', label='UCB-N')
+    ax.errorbar(x, avg_regret[:,2], yerr=std_regret[:,2],fmt='b-', label='UCB-H')
+    ax.errorbar(x, avg_regret[:,3], yerr=std_regret[:,3],fmt='g-', label='UCB-D')
+    legend = ax.legend(loc='upper right', shadow=True)
+    plt.xlabel('Rounds')
+    plt.ylabel('Pseudo-Regret')
+    plt.title('Pseudo-Regret of UCB-type Algorithms for '+str(K)+' arms with c '+str(c))
+    plt.savefig('./figures/regret_K'+str(K)+'_c'+str(c)+'.png')
+
+    fig, ax = plt.subplots()
+    ax.errorbar(x, avg_losses[:,0], yerr=std_losses[:,0],fmt='r-', label='UCB')
+    ax.errorbar(x, avg_losses[:,1], yerr=std_losses[:,1],fmt='k-', label='UCB-N')
+    ax.errorbar(x, avg_losses[:,2], yerr=std_losses[:,2],fmt='b-', label='UCB-H')
+    ax.errorbar(x, avg_losses[:,3], yerr=std_losses[:,3],fmt='g-', label='UCB-D')
+    legend = ax.legend(loc='upper right', shadow=True)
+    plt.xlabel('Rounds')
+    plt.ylabel(' Losses')
+    plt.title('Losses of UCB-type Algorithms for '+str(K)+' arms with c '+str(c))
+    plt.savefig('./figures/losses_K'+str(K)+'_c'+str(c)+'.png')
+
+    fig, ax = plt.subplots()
+    ax.errorbar(x, avg_counts[:,0], yerr=std_counts[:,0],fmt='r-', label='UCB')
+    ax.errorbar(x, avg_counts[:,1], yerr=std_counts[:,1],fmt='k-', label='UCB-N')
+    ax.errorbar(x, avg_counts[:,2], yerr=std_counts[:,2],fmt='b-', label='UCB-H')
+    ax.errorbar(x, avg_counts[:,3], yerr=std_counts[:,3],fmt='g-', label='UCB-D')
+    legend = ax.legend(loc='upper right', shadow=True)
+    plt.xlabel('Rounds')
+    plt.ylabel('Expected Counts')
+    plt.title('Expected Counts of UCB-type Algorithms for '+str(K)+' arms with c '+str(c))
+    plt.savefig('./figures/counts_K'+str(K)+'_c'+str(c)+'.png')
 
 ############# ############# ############# ############# #############  MAIN ############# ############# ############# ############# ############# 
 if __name__ == "__main__":
@@ -370,8 +411,8 @@ if __name__ == "__main__":
 #    print "regret of UCB " + str(reg1) + ", regret of UCB-N " + str(reg2) + ", regret of UCB-H " + str(reg3) + ", regret of UCB-D " + str(reg4)
     
     if int(sys.argv[3]) == 1:
-        c_values=[0.05, 0.4]
-#        c_values=[0.05,0.1,0.15,0.2,0.25,0.3,0.35,0.4,0.45]
+#        c_values=[0.05, 0.4]
+        c_values=[0.05,0.2,0.4,0.6,1,2,10]
         for c in c_values:
             print 'workin on c'+str(c)
             plotting(c,alpha,K,text_file) #last plot point is for T=2000
