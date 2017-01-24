@@ -10,28 +10,28 @@ random.seed(1234)
 ############# ############# ############# ############# #############  HELPER FUNCTIONS ############# ############# ############# ############# ############# 
 def create_experts(K):
     #creating the rejecting and hypothesis experts according to threholds
-    rej_experts = [random.uniform(0.0, 1.0) for itr in range(K)] # reject if rej_experts[i] < data, 
-    hyp_experts = [random.uniform(0.0, 0.3) for itr in range(K)]  # classification surface is given by threhold rej_expert[i]+hyp_expert[i]
-    experts = zip(rej_experts, hyp_experts) #expert format is list of tuple [(rej_threshold1, hyp_threshold1),(rej_threshold2, hyp_threshold2).... ]    
-    # fexperts=[]
-    # rej_experts = [random.uniform(0.0, 1.0) for itr in range(K-1)] # reject if rej_experts[i] < data, 
-    # # multiple hypotehsis for each rejecting expert
-    # for rej in rej_experts:
-    #     for h in range(5):
-    #         hyp=random.uniform(0.0, 0.3)
-    #         fexperts.append([rej,hyp])
-    # hyp_save=[]
-    # experts=[]
-    # #each hypotehsis has accepting expert
-    # for ex in fexperts:
-    #     hypo=ex[0]+ex[1]
-    #     experts.append([ex[0],ex[1]])
-    #     if hypo not in hyp_save:
-    #         experts.append([-10.0,hypo]) #always accept for each h
-    #         hyp_save.append(hypo)
-    # experts.append([10.0,1.0])#always reject one
-
-    return experts
+    #rej_experts = [random.uniform(0.0, 1.0) for itr in range(K)] # reject if rej_experts[i] < data, 
+    #hyp_experts = [random.uniform(0.0, 0.3) for itr in range(K)]  # classification surface is given by threhold rej_expert[i]+hyp_expert[i]
+    #experts = zip(rej_experts, hyp_experts) #expert format is list of tuple [(rej_threshold1, hyp_threshold1),(rej_threshold2, hyp_threshold2).... ]    
+     fexperts=[]
+     rej_experts = [random.uniform(0.0, 1.0) for itr in range(K-1)] # reject if rej_experts[i] < data, 
+     # multiple hypotehsis for each rejecting expert
+     for rej in rej_experts:
+         for h in range(5):
+             hyp=random.uniform(0.0, 0.3)
+             fexperts.append([rej,hyp])
+     hyp_save=[]
+     experts=[]
+     #each hypotehsis has accepting expert
+     for ex in fexperts:
+         hypo=ex[0]+ex[1]
+         experts.append([ex[0],ex[1]])
+         if hypo not in hyp_save:
+             experts.append([-10.0,hypo]) #always accept for each h
+             hyp_save.append(hypo)
+     experts.append([10.0,1.0])#always reject one
+     
+     return experts
 
 def create_data(T):
     #creating data according to gaussian and labels
@@ -297,7 +297,7 @@ def ucbh(c, alpha, experts, dat):
 def plotting(c,alpha,K,text_file):
 #NEED TO IMRPOVE THIS PLOTTING FUNCTION BC IT SUCKS
     experts= create_experts(K)
-    NUM_AVG=5
+    NUM_AVG=2
     avg_regret=[]
     avg_counts=[]
     avg_losses=[]
@@ -306,13 +306,13 @@ def plotting(c,alpha,K,text_file):
             loss=[]
             count_rejection=[]
             expert_loss=[]
-            x=range(200,1200,200) #maybe use T instead?
+            x=range(200,800,200) #maybe use T instead?
             for rounds in x:
                 loss_at_t=[]
                 count_at_t=[]
                 expert_loss_at_t=[]
 
-                for p in range(5):
+                for p in range(2):
                         data=create_data(rounds)
                         loss_experts=loss_of_every_expert(data,experts,c)                
                         loss1,countrej1=ucb(c,alpha,experts,data)
@@ -369,10 +369,13 @@ def plotting(c,alpha,K,text_file):
 
 
     fig, ax = plt.subplots()
+    axes = plt.gca()
     ax.errorbar(x, avg_regret[:,0], yerr=std_regret[:,0],fmt='r-', label='UCB')
     ax.errorbar(x, avg_regret[:,1], yerr=std_regret[:,1],fmt='k-', label='UCB-N')
     ax.errorbar(x, avg_regret[:,2], yerr=std_regret[:,2],fmt='b-', label='UCB-H')
     ax.errorbar(x, avg_regret[:,3], yerr=std_regret[:,3],fmt='g-', label='UCB-D')
+    ax.axhline(y=0.0,c="magenta",linewidth=2,zorder=10)
+#    axes.set_ylim([min(-0.001,np.amin(avg_losses)),np.amax(avg_losses)])
     legend = ax.legend(loc='upper right', shadow=True)
     plt.xlabel('Rounds')
     plt.ylabel('Pseudo-Regret')
@@ -380,10 +383,12 @@ def plotting(c,alpha,K,text_file):
     plt.savefig('./figures/regret_K'+str(len(experts))+'_c'+str(c)+'.png')
 
     fig, ax = plt.subplots()
+    axes = plt.gca()
     ax.errorbar(x, avg_losses[:,0], yerr=std_losses[:,0],fmt='r-', label='UCB')
     ax.errorbar(x, avg_losses[:,1], yerr=std_losses[:,1],fmt='k-', label='UCB-N')
     ax.errorbar(x, avg_losses[:,2], yerr=std_losses[:,2],fmt='b-', label='UCB-H')
     ax.errorbar(x, avg_losses[:,3], yerr=std_losses[:,3],fmt='g-', label='UCB-D')
+    ax.axhline(y=0.0,c="magenta",linewidth=2,zorder=10)
     legend = ax.legend(loc='upper right', shadow=True)
     plt.xlabel('Rounds')
     plt.ylabel(' Losses')
@@ -405,17 +410,36 @@ def plotting(c,alpha,K,text_file):
 if __name__ == "__main__":
 
     #parameters
-    alpha = 3
-    K = int(sys.argv[1])
-    text_file = open("./figures/Output"+str(K)+".txt", "w")
-    c_values=[0.4]
+#    alpha = 3
+#    K = int(sys.argv[1])
+#    text_file = open("./figures/Output"+str(K)+".txt", "w")
+#    c_values=[0.4]
     #c_values=[0.05,0.2,0.4,0.6,1,2,10]
-    for c in c_values:
-            print 'workin on c'+str(c)
-            plotting(c,alpha,K,text_file) #last plot point is for T=2000
+ #   for c in c_values:
+ #           print 'workin on c'+str(c)
+ #           plotting(c,alpha,K,text_file) #last plot point is for T=2000
             
-    text_file.close()
+ #   text_file.close()
 
+    alpha=3
+    val=int(sys.argv[1])
+    K_values=[11,6,3]
+    c_values=[0.05,0.2,0.4,0.6,1,2,10]
+    if val<=7:
+        K=K_values[0]
+        c= c_values[int(sys.argv[1])-1]
+    elif 7<val and val<=14:
+        K=K_values[1]
+        c= c_values[int(sys.argv[1])-8]
+    elif 14 <val and val <=21:
+        K=K_values[2]
+        c= c_values[int(sys.argv[1])-15]
+    else:
+        print 'too high values'
+
+    text_file = open("./Output_" + str(K) + "arms.txt", "w")
+    plotting(c,alpha,K,text_file) #last plot point is for T=2000                   
+    text_file.close()
 
 
     #All algorithms should share same data and same experts. 
