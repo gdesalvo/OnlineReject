@@ -10,9 +10,27 @@ random.seed(1234)
 ############# ############# ############# ############# #############  HELPER FUNCTIONS ############# ############# ############# ############# ############# 
 def create_experts(K):
     #creating the rejecting and hypothesis experts according to threholds
-    rej_experts = [random.uniform(0.0, 1.0) for itr in range(K-1)] # reject if rej_experts[i] < data, 
-    hyp_experts = [random.uniform(0.0, 0.3) for itr in range(K-1)]  # classification surface is given by threhold rej_expert[i]+hyp_expert[i]
+    rej_experts = [random.uniform(0.0, 1.0) for itr in range(K)] # reject if rej_experts[i] < data, 
+    hyp_experts = [random.uniform(0.0, 0.3) for itr in range(K)]  # classification surface is given by threhold rej_expert[i]+hyp_expert[i]
     experts = zip(rej_experts, hyp_experts) #expert format is list of tuple [(rej_threshold1, hyp_threshold1),(rej_threshold2, hyp_threshold2).... ]    
+    # fexperts=[]
+    # rej_experts = [random.uniform(0.0, 1.0) for itr in range(K-1)] # reject if rej_experts[i] < data, 
+    # # multiple hypotehsis for each rejecting expert
+    # for rej in rej_experts:
+    #     for h in range(5):
+    #         hyp=random.uniform(0.0, 0.3)
+    #         fexperts.append([rej,hyp])
+    # hyp_save=[]
+    # experts=[]
+    # #each hypotehsis has accepting expert
+    # for ex in fexperts:
+    #     hypo=ex[0]+ex[1]
+    #     experts.append([ex[0],ex[1]])
+    #     if hypo not in hyp_save:
+    #         experts.append([-10.0,hypo]) #always accept for each h
+    #         hyp_save.append(hypo)
+    # experts.append([10.0,1.0])#always reject one
+
     return experts
 
 def create_data(T):
@@ -278,6 +296,7 @@ def ucbh(c, alpha, experts, dat):
 ############# ############# ############# ############# #############  PLOTTING ############# ############# ############# ############# ############# 
 def plotting(c,alpha,K,text_file):
 #NEED TO IMRPOVE THIS PLOTTING FUNCTION BC IT SUCKS
+    experts= create_experts(K)
     NUM_AVG=5
     avg_regret=[]
     avg_counts=[]
@@ -287,14 +306,13 @@ def plotting(c,alpha,K,text_file):
             loss=[]
             count_rejection=[]
             expert_loss=[]
-            x=range(200,5000,200) #maybe use T instead?
+            x=range(200,1200,200) #maybe use T instead?
             for rounds in x:
                 loss_at_t=[]
                 count_at_t=[]
                 expert_loss_at_t=[]
-                experts= create_experts(K)
 
-                for p in range(10):
+                for p in range(5):
                         data=create_data(rounds)
                         loss_experts=loss_of_every_expert(data,experts,c)                
                         loss1,countrej1=ucb(c,alpha,experts,data)
@@ -358,8 +376,8 @@ def plotting(c,alpha,K,text_file):
     legend = ax.legend(loc='upper right', shadow=True)
     plt.xlabel('Rounds')
     plt.ylabel('Pseudo-Regret')
-    plt.title('Pseudo-Regret of UCB-type Algorithms for '+str(K)+' arms with c '+str(c))
-    plt.savefig('./figures/regret_K'+str(K)+'_c'+str(c)+'.png')
+    plt.title('Pseudo-Regret of UCB-type Algorithms for '+str(len(experts))+' arms with c '+str(c))
+    plt.savefig('./figures/regret_K'+str(len(experts))+'_c'+str(c)+'.png')
 
     fig, ax = plt.subplots()
     ax.errorbar(x, avg_losses[:,0], yerr=std_losses[:,0],fmt='r-', label='UCB')
@@ -369,8 +387,8 @@ def plotting(c,alpha,K,text_file):
     legend = ax.legend(loc='upper right', shadow=True)
     plt.xlabel('Rounds')
     plt.ylabel(' Losses')
-    plt.title('Losses of UCB-type Algorithms for '+str(K)+' arms with c '+str(c))
-    plt.savefig('./figures/losses_K'+str(K)+'_c'+str(c)+'.png')
+    plt.title('Losses of UCB-type Algorithms for '+str(len(experts))+' arms with c '+str(c))
+    plt.savefig('./figures/losses_K'+str(len(experts))+'_c'+str(c)+'.png')
 
     fig, ax = plt.subplots()
     ax.errorbar(x, avg_counts[:,0], yerr=std_counts[:,0],fmt='r-', label='UCB')
@@ -380,20 +398,26 @@ def plotting(c,alpha,K,text_file):
     legend = ax.legend(loc='upper right', shadow=True)
     plt.xlabel('Rounds')
     plt.ylabel('Expected Counts')
-    plt.title('Expected Counts of UCB-type Algorithms for '+str(K)+' arms with c '+str(c))
-    plt.savefig('./figures/counts_K'+str(K)+'_c'+str(c)+'.png')
+    plt.title('Expected Counts of UCB-type Algorithms for '+str(len(experts))+' arms with c '+str(c))
+    plt.savefig('./figures/counts_K'+str(len(experts))+'_c'+str(c)+'.png')
 
 ############# ############# ############# ############# #############  MAIN ############# ############# ############# ############# ############# 
 if __name__ == "__main__":
 
     #parameters
-    c = 0.45
-    if len(sys.argv) > 4:
-        c = float(sys.argv[4])
     alpha = 3
     K = int(sys.argv[1])
-    T = int(sys.argv[2])
-    text_file = open("./figures/Output_" + str(K) + "arms.txt", "w")
+    text_file = open("./figures/Output"+str(K)+".txt", "w")
+    c_values=[0.4]
+    #c_values=[0.05,0.2,0.4,0.6,1,2,10]
+    for c in c_values:
+            print 'workin on c'+str(c)
+            plotting(c,alpha,K,text_file) #last plot point is for T=2000
+            
+    text_file.close()
+
+
+
     #All algorithms should share same data and same experts. 
 #    experts, data = create_experts_and_data(K, T)
 #    avgloss_best = loss_of_best_expert(data, experts, c) / T
@@ -410,11 +434,5 @@ if __name__ == "__main__":
 #    print "loss of UCB " + str(avgloss_ucb) + ", loss of UCB-N " + str(avgloss_ucbn) + ", loss of UCB-H " + str(avgloss_ucbh) + ", loss of UCB-D " + str(avgloss_ucbd)
 #    print "regret of UCB " + str(reg1) + ", regret of UCB-N " + str(reg2) + ", regret of UCB-H " + str(reg3) + ", regret of UCB-D " + str(reg4)
     
-    if int(sys.argv[3]) == 1:
+#    if int(sys.argv[3]) == 1:
 #        c_values=[0.05, 0.4]
-        c_values=[0.05,0.2,0.4,0.6,1,2,10]
-        for c in c_values:
-            print 'workin on c'+str(c)
-            plotting(c,alpha,K,text_file) #last plot point is for T=2000
-            
-    text_file.close()
