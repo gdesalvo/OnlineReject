@@ -14,14 +14,14 @@ def create_experts(K, want_random):
         rej_experts = [random.uniform(0.0, 1.0) for itr in range(K)] # reject if rej_experts[i] < data, 
     else:
         rej_experts = list(np.linspace(0.0, 1.0, K))
- #   rej_experts.append(0.0)
+
 
     if want_random:
         hyp_experts = [random.uniform(0.0, 0.3) for itr in range(K)]  # classification surface is given by threhold rej_expert[i]+hyp_expert[i]
     else:
         hyp_experts = list(np.linspace(0.0, 0.3, K))
 
-#    hyp_experts.append(0.6)
+
     experts = zip(rej_experts, hyp_experts) #expert format is list of tuple [(rej_threshold1, hyp_threshold1),(rej_threshold2, hyp_threshold2).... ]    
     # fexperts=[]
     # rej_experts = [random.uniform(0.0, 1.0) for itr in range(K-1)] # reject if rej_experts[i] < data, 
@@ -64,12 +64,20 @@ def lcb_bound(current_time, pull, alpha):
 def loss_of_best_expert(dat,experts,c):
     return min(loss_of_every_expert(dat, experts, c))
 
-def loss_of_every_expert(dat, experts, c):
+def loss_of_every_expert(dat, experts, c,return_rounds):
+    loss_expert_at_rounds=[]
+    enum_return_rounds=0
     loss_expert = [0] * len(experts)
     for t in range(len(dat)):
         for i in range(len(experts)):
-            loss_expert[i] += rej_loss(dat[t][1], exp_label(dat[t][0], experts[i]), c)
-    return loss_expert
+                loss_expert[i] += rej_loss(dat[t][1], exp_label(dat[t][0], experts[i]), c)
+            
+
+        if enum_return_rounds < len(return_rounds) and t==return_rounds[enum_return_rounds]:
+            loss_expert_at_rounds.append([ix / float(t) for ix in loss_expert] )
+            enum_return_rounds+=1
+
+    return loss_expert_at_rounds
 
 
 def rej_loss(true_label, expert_label, c):
@@ -99,45 +107,48 @@ def exp_label(data, expert):
 
 ############# ############# ############# ############# ALGORITHMS ############# ############# ############# ############# ############# ############# 
 
-def ucb(c, alpha, experts, dat): 
+# def ucb(c, alpha, experts, dat): 
 
-    K=len(experts)
-    T=len(dat)
-    #initialization step
-    expert_avg=[]
-    loss_alg = 0
-    count_rej=0
-    for i in range(K):
-        expert_label=exp_label(dat[i][0], experts[i])
-        if expert_label==-1:
-            count_rej+=1
-        exp_loss = rej_loss(dat[i][1], expert_label, c)
-        expert_avg.append(exp_loss)
-        loss_alg += exp_loss
-    expert_pulls = [1.0] * K #everyone is pulled once in intiliazation step
+#     K=len(experts)
+#     T=len(dat)
+#     #initialization step
+#     expert_avg=[]
+#     loss_alg = 0
+#     count_rej=0
+#     for i in range(K):
+#         expert_label=exp_label(dat[i][0], experts[i])
+#         if expert_label==-1:
+#             count_rej+=1
+#         exp_loss = rej_loss(dat[i][1], expert_label, c)
+#         expert_avg.append(exp_loss)
+#         loss_alg += exp_loss
+#     expert_pulls = [1.0] * K #everyone is pulled once in intiliazation step
 
-    for t in range(K, T):
-        #find best arm
-        lcb_list = [max(expert_avg[i] - lcb_bound(t, expert_pulls[i], alpha), 0.0) for i in range(K)] #soinefficient
-        best_arm = lcb_list.index(min(lcb_list)) 
+#     for t in range(K, T):
+#         #find best arm
+#         lcb_list = [max(expert_avg[i] - lcb_bound(t, expert_pulls[i], alpha), 0.0) for i in range(K)] #soinefficient
+#         best_arm = lcb_list.index(min(lcb_list)) 
 
-        expert_pulls[best_arm] += 1 #update number of times arm is pulled
+#         expert_pulls[best_arm] += 1 #update number of times arm is pulled
 
-        #update loss of best arm average
-        inv_pull = 1.0 / expert_pulls[best_arm]
-        expert_loss = rej_loss(dat[t][1], exp_label(dat[t][0], experts[best_arm]), c)
-        expert_avg[best_arm] = expert_loss * inv_pull + (1-inv_pull) * expert_avg[best_arm]
-        if exp_label(dat[t][0],experts[best_arm]) == -1:
-            count_rej+=1
+#         #update loss of best arm average
+#         inv_pull = 1.0 / expert_pulls[best_arm]
+#         expert_loss = rej_loss(dat[t][1], exp_label(dat[t][0], experts[best_arm]), c)
+#         expert_avg[best_arm] = expert_loss * inv_pull + (1-inv_pull) * expert_avg[best_arm]
+#         if exp_label(dat[t][0],experts[best_arm]) == -1:
+#             count_rej+=1
 
-        #update regret
-        loss_alg += expert_loss
+#         #update regret
+#         loss_alg += expert_loss
 
-    return loss_alg / float(T) , count_rej/float(T)
+#     return loss_alg / float(T) , count_rej/float(T)
 
 
-def ucbn(c, alpha, experts, dat):
+def ucbn(c, alpha, experts, dat, return_rounds):
 
+    loss_alg_at_return_rounds=[]
+    count_rej_at_return_rounds=[]
+    enum_return_rounds=0
     K = len(experts)
     T = len(dat)
 #    print '\n\n UCB N'
@@ -145,6 +156,7 @@ def ucbn(c, alpha, experts, dat):
     expert_pulls = [0.0] * K 
     loss_alg = 0
     count_rej=0
+
 
     for t in range(T):
         #find best arm
@@ -172,10 +184,19 @@ def ucbn(c, alpha, experts, dat):
                 inv_pull = 1.0 / expert_pulls[i]
                 current_loss = rej_loss(dat[t][1], exp_label(dat[t][0], experts[i]), c) 
                 expert_avg[i] = current_loss * inv_pull + (1 - inv_pull) * expert_avg[i]
-    return loss_alg / float(T),count_rej /float(T) 
+        if enum_return_rounds < len(return_rounds) and t==return_rounds[enum_return_rounds]:
+            loss_alg_at_return_rounds.append(loss_alg/float(t))
+            count_rej_at_return_rounds.append(count_rej/float(t))
+            enum_return_rounds+=1
+    return loss_alg_at_return_rounds,count_rej_at_return_rounds
 
 
-def ucbcc(c, alpha, experts, dat):
+def ucbcc(c, alpha, experts, dat,return_rounds):
+
+    loss_alg_at_return_rounds=[]
+    count_rej_at_return_rounds=[]
+    enum_return_rounds=0
+
     K = len(experts)
     T = len(dat)
 
@@ -219,9 +240,18 @@ def ucbcc(c, alpha, experts, dat):
                 current_label = exp_hyp_label(dat[t][0], experts[i])
                 current_loss = rej_loss(dat[t][1], current_label, c)
                 expert_hyp_losses[i] += current_loss 
-    return loss_alg/ float(T) , count_rej/float(T)
+        if enum_return_rounds < len(return_rounds) and t==return_rounds[enum_return_rounds]:
+            loss_alg_at_return_rounds.append(loss_alg/float(t))
+            count_rej_at_return_rounds.append(count_rej/float(t))
+            enum_return_rounds+=1
+    return loss_alg_at_return_rounds,count_rej_at_return_rounds
 
-def ucbd(c, alpha, experts, dat):
+
+def ucbd(c, alpha, experts, dat,return_rounds):
+    loss_alg_at_return_rounds=[]
+    count_rej_at_return_rounds=[]
+    enum_return_rounds=0
+
     K = len(experts)
     T = len(dat)
 
@@ -262,9 +292,17 @@ def ucbd(c, alpha, experts, dat):
                 current_label = exp_hyp_label(dat[t][0], experts[i])
                 current_loss = rej_loss(dat[t][1], current_label, c)
                 expert_hyp_losses[i] += current_loss 
-    return loss_alg/ float(T) , count_rej/float(T)
+        if enum_return_rounds < len(return_rounds) and t==return_rounds[enum_return_rounds]:
+            loss_alg_at_return_rounds.append(loss_alg/float(t))
+            count_rej_at_return_rounds.append(count_rej/float(t))
+            enum_return_rounds+=1
+    return loss_alg_at_return_rounds,count_rej_at_return_rounds
        
-def ucbh(c, alpha, experts, dat):
+def ucbh(c, alpha, experts, dat,return_rounds):
+    loss_alg_at_return_rounds=[]
+    count_rej_at_return_rounds=[]
+    enum_return_rounds=0
+
     K = len(experts)
     T = len(dat)
 #    print '\n\n ucbH'
@@ -335,12 +373,18 @@ def ucbh(c, alpha, experts, dat):
                         else:
                             expert_pulls[jj] += 1
                             hyp_expert_avg[str(jj)] = rej_loss(dat[t][1], save_expert_labels[jj], c)
+        if enum_return_rounds < len(return_rounds) and t==return_rounds[enum_return_rounds]:
+            loss_alg_at_return_rounds.append(loss_alg/float(t))
+            count_rej_at_return_rounds.append(count_rej/float(t))
+            enum_return_rounds+=1
+    return loss_alg_at_return_rounds,count_rej_at_return_rounds
 
 
-    return loss_alg / float(T), count_rej/float(T)
+def ucbt(c, alpha, experts, dat,return_rounds):
+    loss_alg_at_return_rounds=[]
+    count_rej_at_return_rounds=[]
+    enum_return_rounds=0
 
-
-def ucbt(c, alpha, experts, dat):
     K = len(experts)
     gamma=0.9
     T = len(dat)
@@ -409,79 +453,94 @@ def ucbt(c, alpha, experts, dat):
                             expert_pulls[jj] += 1
                             hyp_expert_avg[str(jj)] = rej_loss(dat[t][1], save_expert_labels[jj], c)
 
+        if enum_return_rounds < len(return_rounds) and t==return_rounds[enum_return_rounds]:
+            loss_alg_at_return_rounds.append(loss_alg/float(t))
+            count_rej_at_return_rounds.append(count_rej/float(t))
+            enum_return_rounds+=1
+    return loss_alg_at_return_rounds,count_rej_at_return_rounds
 
-    return loss_alg / float(T), count_rej/float(T)
 
 
-def ucbvt(c, alpha, experts, dat):
-    K = len(experts)
-    T = len(dat)
-    hyp_expert_avg = {} #only care of emperical average over hyp_experts.
-    expert_pulls = [0.0]*K #counts the number of times when r>0
-    loss_alg = 0
-    count_rej=0
+def ucbvt(c, alpha, experts, dat,return_rounds):
 
-    for t in range(T):
-        #use dictionary so keep track of which are accepting and rejecting experts at time t
-        acc_exp = {}  
-        good_acc_exp={}
-        rej_exp = {}
-        save_expert_labels=[]
-        for i in range(K):
-            #separate rejecting and accepting experts according to their label (not really kosher but essence the same)
-            expert_label = exp_label(dat[t][0], experts[i])
-            save_expert_labels.append(expert_label)
-            if expert_label!=-1:
-                if 1.0-(expert_pulls[i])/(t+1) <= ( 1.0-1.0/float(T) ):  # fractin of times r rejected is less than gamma
-                    if str(i) in hyp_expert_avg.keys():
-                        good_acc_exp[str(i)] = max(hyp_expert_avg[str(i)] - lcb_bound(t,expert_pulls[i],alpha), 0.0)
-                    else:
-                        #i dont think this every happens
-                        good_acc_exp[str(i)] = 0.0  # -float("inf")  #if you never pulled an arm before the LCB is -inf
+    # YOU CAN'T PARALLELIZE THIS IN T BECAUSE YOU T IN ALGORITHM
+    loss_alg_at_return_rounds=[]
+    count_rej_at_return_rounds=[]
+    enum_return_rounds=0
 
-                if str(i) in hyp_expert_avg.keys():
-                        acc_exp[str(i)] = max(hyp_expert_avg[str(i)] - lcb_bound(t,expert_pulls[i],alpha), 0.0)
-                else:
-                        acc_exp[str(i)] = 0.0  # -float("inf")  #if you never pulled an arm before the LCB is -inf
-            else:
-                if str(i) in hyp_expert_avg.keys():
-                    rej_exp[str(i)] = max(hyp_expert_avg[str(i)] - lcb_bound(t,expert_pulls[i],alpha), 0.0)
-                else:
-                    rej_exp[str(i)] = 0.0  # -float("inf")
-                    
+    for T in return_rounds:
+        K = len(experts)
+#        T = len(dat)
+        hyp_expert_avg = {} #only care of emperical average over hyp_experts.
+        expert_pulls = [0.0]*K #counts the number of times when r>0
+        loss_alg = 0
+        count_rej=0
 
-        #find best arm
-        if bool(good_acc_exp) == True and good_acc_exp[min(good_acc_exp, key=good_acc_exp.get)] < c:
-                best_arm = int(min(good_acc_exp, key=good_acc_exp.get))
-                
-        else:
-            if bool(rej_exp) == True:
-                best_arm = int(min(rej_exp, key=rej_exp.get))
-                count_rej+=1
-            else:
-                best_arm = int(min(acc_exp, key=acc_exp.get))
-
-        
-        #update regret
-        best_expert_label = save_expert_labels[best_arm]
-        expert_loss = rej_loss(dat[t][1], best_expert_label, c) #technically you are calculate loss of best expert twice but meh
-        #print best_arm, expert_loss,expert_pulls[best_arm]
-        loss_alg += expert_loss
-#        print str(dat[t][0])+","+str(best_arm)+","+ str(experts[best_arm])+",   " +str(expert_loss)+","+str(loss_alg) +","+ 'ucbH'
-        if best_expert_label != -1:
-            # if pulled a nonrej expert update all acc_experts
-            for jj in range(len(save_expert_labels)):
-                if save_expert_labels[jj] != -1:
-                        if str(jj) in hyp_expert_avg.keys():
-                            expert_pulls[jj] += 1
-                            inv_pull = 1.0 / expert_pulls[jj]
-                            hyp_expert_avg[str(jj)] = rej_loss(dat[t][1], save_expert_labels[jj], c) * inv_pull + (1.0 - inv_pull) * hyp_expert_avg[str(jj)]
+        for t in range(T):
+            #use dictionary so keep track of which are accepting and rejecting experts at time t
+            acc_exp = {}  
+            good_acc_exp={}
+            rej_exp = {}
+            save_expert_labels=[]
+            for i in range(K):
+                #separate rejecting and accepting experts according to their label (not really kosher but essence the same)
+                expert_label = exp_label(dat[t][0], experts[i])
+                save_expert_labels.append(expert_label)
+                if expert_label!=-1:
+                    if 1.0-(expert_pulls[i])/(t+1) <= ( 1.0-1.0/float(T) ):  # fractin of times r rejected is less than gamma
+                        if str(i) in hyp_expert_avg.keys():
+                            good_acc_exp[str(i)] = max(hyp_expert_avg[str(i)] - lcb_bound(t,expert_pulls[i],alpha), 0.0)
                         else:
-                            expert_pulls[jj] += 1
-                            hyp_expert_avg[str(jj)] = rej_loss(dat[t][1], save_expert_labels[jj], c)
+                            #i dont think this every happens
+                            good_acc_exp[str(i)] = 0.0  # -float("inf")  #if you never pulled an arm before the LCB is -inf
+
+                    if str(i) in hyp_expert_avg.keys():
+                            acc_exp[str(i)] = max(hyp_expert_avg[str(i)] - lcb_bound(t,expert_pulls[i],alpha), 0.0)
+                    else:
+                            acc_exp[str(i)] = 0.0  # -float("inf")  #if you never pulled an arm before the LCB is -inf
+                else:
+                    if str(i) in hyp_expert_avg.keys():
+                        rej_exp[str(i)] = max(hyp_expert_avg[str(i)] - lcb_bound(t,expert_pulls[i],alpha), 0.0)
+                    else:
+                        rej_exp[str(i)] = 0.0  # -float("inf")
 
 
-    return loss_alg / float(T), count_rej/float(T)
+            #find best arm
+            if bool(good_acc_exp) == True and good_acc_exp[min(good_acc_exp, key=good_acc_exp.get)] < c:
+                    best_arm = int(min(good_acc_exp, key=good_acc_exp.get))
+
+            else:
+                if bool(rej_exp) == True:
+                    best_arm = int(min(rej_exp, key=rej_exp.get))
+                    count_rej+=1
+                else:
+                    best_arm = int(min(acc_exp, key=acc_exp.get))
+
+
+            #update regret
+            best_expert_label = save_expert_labels[best_arm]
+            expert_loss = rej_loss(dat[t][1], best_expert_label, c) #technically you are calculate loss of best expert twice but meh
+            #print best_arm, expert_loss,expert_pulls[best_arm]
+            loss_alg += expert_loss
+    #        print str(dat[t][0])+","+str(best_arm)+","+ str(experts[best_arm])+",   " +str(expert_loss)+","+str(loss_alg) +","+ 'ucbH'
+            if best_expert_label != -1:
+                # if pulled a nonrej expert update all acc_experts
+                for jj in range(len(save_expert_labels)):
+                    if save_expert_labels[jj] != -1:
+                            if str(jj) in hyp_expert_avg.keys():
+                                expert_pulls[jj] += 1
+                                inv_pull = 1.0 / expert_pulls[jj]
+                                hyp_expert_avg[str(jj)] = rej_loss(dat[t][1], save_expert_labels[jj], c) * inv_pull + (1.0 - inv_pull) * hyp_expert_avg[str(jj)]
+                            else:
+                                expert_pulls[jj] += 1
+                                hyp_expert_avg[str(jj)] = rej_loss(dat[t][1], save_expert_labels[jj], c)
+
+
+
+        loss_alg_at_return_rounds.append(loss_alg / float(T))    
+        count_rej_at_return_rounds.append(count_rej / float(T))    
+
+    return loss_alg_at_return_rounds,count_rej_at_return_rounds
 
 
 
@@ -493,57 +552,46 @@ def ucbvt(c, alpha, experts, dat):
 def plotting(c,alpha,K,text_file):
 #NEED TO IMRPOVE THIS PLOTTING FUNCTION BC IT SUCKS
 
-    NUM_AVG=5
+    NUM_AVG=3
+    T_MAX=6000
     avg_regret=[]
     avg_counts=[]
     avg_losses=[]
     for er in range(NUM_AVG):
             experts= create_experts(K, False)
-                #for plotting
-            loss=[]
-            count_rejection=[]
-            expert_loss=[]
-            x=range(200,5000,500) #maybe use T instead?
-            for rounds in x:
-                loss_at_t=[]
-                count_at_t=[]
-                expert_loss_at_t=[]
-
-                for p in range(20):
-                        data=create_data(rounds)
-                        loss_experts=loss_of_every_expert(data,experts,c)                
-                        loss1,countrej1=ucbcc(c,alpha,experts,data)
-                        loss2,countrej2=ucbn(c,alpha,experts,data)
-                        loss3,countrej3=ucbh(c,alpha,experts,data)
-                        loss4,countrej4=ucbd(c,alpha,experts,data)
-                        loss5,countrej5=ucbt(c,alpha,experts,data)
-                        loss6,countrej6=ucbvt(c,alpha,experts,data)
-                        expert_loss_at_t.append(loss_experts)
-                        loss_at_t.append([loss1,loss2,loss3,loss4,loss5,loss6])
-                        count_at_t.append([countrej1,countrej2,countrej3,countrej4,countrej5,countrej6])
-
-                        
-                loss_at_t=np.array(loss_at_t)
-                loss.append(np.mean(loss_at_t,axis=0 ))
-                count_rejection.append(np.mean(np.array(count_at_t),axis=0))
-                expert_loss.append(np.mean(np.array(expert_loss_at_t)/float(rounds),axis=0))
-
-
-
-            loss=np.array(loss)
-            count_rejection=np.array(count_rejection)
-
-            expert_loss=np.array(expert_loss)
-            best_expert_loss=np.amin(expert_loss,axis=1)
-
-            regret=loss-np.expand_dims(best_expert_loss,axis=1)
             
+            x=range(200,T_MAX,1000) 
+
+            loss=[]
+            count=[]
+            expert_loss=[]
+
+            for p in range(10):
+                data=create_data(T_MAX)
+                loss_experts=loss_of_every_expert(data,experts,c,x)                
+                loss1,countrej1=ucbcc(c,alpha,experts,data,x) #returns values of all needed roudns
+                loss2,countrej2=ucbn(c,alpha,experts,data,x)
+                loss3,countrej3=ucbh(c,alpha,experts,data,x)
+                loss4,countrej4=ucbd(c,alpha,experts,data,x)
+                loss5,countrej5=ucbt(c,alpha,experts,data,x)
+                #loss6,countrej6=ucbvt(c,alpha,experts,data,x)
+                expert_loss.append(loss_experts)
+                loss.append([loss1,loss2,loss3,loss4,loss5])#,loss6])
+                count.append([countrej1,countrej2,countrej3,countrej4,countrej5])#,countrej6])
+            
+
+            loss=np.mean(np.array(loss),axis=0)
+            count=np.mean(np.array(count),axis=0)
+            expert_loss=np.mean(np.array(expert_loss),axis=0)
+            best_expert_loss=np.amin(expert_loss,axis=1)
+            regret=loss-np.expand_dims(best_expert_loss,axis=0)
             avg_regret.append(regret)
             avg_losses.append(loss)
-            avg_counts.append(count_rejection)
-    
+            avg_counts.append(count)
+
     std_regret=np.std(np.array(avg_regret),axis=0)
     avg_regret=np.mean(np.array(avg_regret),axis=0)
+
     std_losses=np.std(np.array(avg_losses),axis=0)
     avg_losses=np.mean(np.array(avg_losses),axis=0)
     std_counts=np.std(np.array(avg_counts),axis=0)
@@ -552,36 +600,36 @@ def plotting(c,alpha,K,text_file):
 
 
     text_file.write('\nPseudo Regret of UCB-type Algorithms for '+str(K)+' arms with c '+str(c))
-    text_file.write('; regret UCBC:'+str(avg_regret[:,0])+'; std UCB:'+str(std_regret[:,0]))
-    text_file.write('; regret UCBN:'+str(avg_regret[:,1])+'; std UCBN:'+str(std_regret[:,1]))
-    text_file.write('; regret UCBH:'+str(avg_regret[:,2])+'; std UCBH:'+str(std_regret[:,2]))
-    text_file.write('; regret UCBD:'+str(avg_regret[:,3])+'; std UCBD:'+str(std_regret[:,3]))
-    text_file.write('; regret UCBT:'+str(avg_regret[:,4])+'; std UCBT:'+str(std_regret[:,4]))
-    text_file.write('; regret UCBVT:'+str(avg_regret[:,5])+'; std UCBVT:'+str(std_regret[:,5]))
+    text_file.write('; regret UCBC:'+str(avg_regret[0])+'; std UCB:'+str(std_regret[0]))
+    text_file.write('; regret UCBN:'+str(avg_regret[1])+'; std UCBN:'+str(std_regret[1]))
+    text_file.write('; regret UCBH:'+str(avg_regret[2])+'; std UCBH:'+str(std_regret[2]))
+    text_file.write('; regret UCBD:'+str(avg_regret[3])+'; std UCBD:'+str(std_regret[3]))
+    text_file.write('; regret UCBT:'+str(avg_regret[4])+'; std UCBT:'+str(std_regret[4]))
+#    text_file.write('; regret UCBVT:'+str(avg_regret[5])+'; std UCBVT:'+str(std_regret[5]))
 
-    text_file.write('; losses UCBC:'+str(avg_losses[:,0])+'; std UCB:'+str(std_losses[:,0]))
-    text_file.write('; losses UCBN:'+str(avg_losses[:,1])+'; std UCBN:'+str(std_losses[:,1]))
-    text_file.write('; losses UCBH:'+str(avg_losses[:,2])+'; std UCBH:'+str(std_losses[:,2]))
-    text_file.write('; losses UCBD:'+str(avg_losses[:,3])+'; std UCBD:'+str(std_losses[:,3]))
-    text_file.write('; losses UCBT:'+str(avg_losses[:,4])+'; std UCBT:'+str(std_losses[:,4]))
-    text_file.write('; losses UCBVT:'+str(avg_losses[:,5])+'; std UCBVT:'+str(std_losses[:,5]))
+    text_file.write('; losses UCBC:'+str(avg_losses[0])+'; std UCB:'+str(std_losses[0]))
+    text_file.write('; losses UCBN:'+str(avg_losses[1])+'; std UCBN:'+str(std_losses[1]))
+    text_file.write('; losses UCBH:'+str(avg_losses[2])+'; std UCBH:'+str(std_losses[2]))
+    text_file.write('; losses UCBD:'+str(avg_losses[3])+'; std UCBD:'+str(std_losses[3]))
+    text_file.write('; losses UCBT:'+str(avg_losses[4])+'; std UCBT:'+str(std_losses[4]))
+#    text_file.write('; losses UCBVT:'+str(avg_losses[5])+'; std UCBVT:'+str(std_losses[5]))
 
-    text_file.write('; counts UCBC:'+str(avg_counts[:,0])+'; std UCB:'+str(std_counts[:,0]))
-    text_file.write('; counts UCBN:'+str(avg_counts[:,1])+'; std UCBN:'+str(std_counts[:,1]))
-    text_file.write('; counts UCBH:'+str(avg_counts[:,2])+'; std UCBH:'+str(std_counts[:,2]))
-    text_file.write('; counts UCBD:'+str(avg_counts[:,3])+'; std UCBD:'+str(std_counts[:,3]))
-    text_file.write('; counts UCBT:'+str(avg_counts[:,4])+'; std UCBT:'+str(std_counts[:,4]))
-    text_file.write('; counts UCBVT:'+str(avg_counts[:,5])+'; std UCBVT:'+str(std_counts[:,5]))
+    text_file.write('; counts UCBC:'+str(avg_counts[0])+'; std UCB:'+str(std_counts[0]))
+    text_file.write('; counts UCBN:'+str(avg_counts[1])+'; std UCBN:'+str(std_counts[1]))
+    text_file.write('; counts UCBH:'+str(avg_counts[2])+'; std UCBH:'+str(std_counts[2]))
+    text_file.write('; counts UCBD:'+str(avg_counts[3])+'; std UCBD:'+str(std_counts[3]))
+    text_file.write('; counts UCBT:'+str(avg_counts[4])+'; std UCBT:'+str(std_counts[4]))
+#    text_file.write('; counts UCBVT:'+str(avg_counts[5])+'; std UCBVT:'+str(std_counts[5]))
 
 
 
     fig, ax = plt.subplots()
-    ax.errorbar(x, avg_regret[:,0], yerr=std_regret[:,0],fmt='r-', label='UCB-C')
-    ax.errorbar(x, avg_regret[:,1], yerr=std_regret[:,1],fmt='k-', label='UCB-N')
-    ax.errorbar(x, avg_regret[:,2], yerr=std_regret[:,2],fmt='b-', label='UCB-H')
-    ax.errorbar(x, avg_regret[:,3], yerr=std_regret[:,3],fmt='g-', label='UCB-D')
-    ax.errorbar(x, avg_regret[:,4], yerr=std_regret[:,4],fmt='c-', label='UCB-T')
-    ax.errorbar(x, avg_regret[:,5], yerr=std_regret[:,5],fmt='y-', label='UCB-VT')
+    ax.errorbar(x, avg_regret[0], yerr=std_regret[0],fmt='r-', label='UCB-C')
+    ax.errorbar(x, avg_regret[1], yerr=std_regret[1],fmt='k-', label='UCB-N')
+    ax.errorbar(x, avg_regret[2], yerr=std_regret[2],fmt='b-', label='UCB-H')
+    ax.errorbar(x, avg_regret[3], yerr=std_regret[3],fmt='g-', label='UCB-D')
+    ax.errorbar(x, avg_regret[4], yerr=std_regret[4],fmt='c-', label='UCB-T')
+#    ax.errorbar(x, avg_regret[5], yerr=std_regret[5],fmt='y-', label='UCB-VT')
     ax.axhline(y=0.0,c="magenta",linewidth=2,zorder=10)
     legend = ax.legend(loc='upper right', shadow=True)
     plt.xlabel('Rounds')
@@ -590,12 +638,12 @@ def plotting(c,alpha,K,text_file):
     plt.savefig('./regret_K'+str(len(experts))+'_c'+str(c)+'.png')
 
     fig, ax = plt.subplots()
-    ax.errorbar(x, avg_losses[:,0], yerr=std_losses[:,0],fmt='r-', label='UCB-C')
-    ax.errorbar(x, avg_losses[:,1], yerr=std_losses[:,1],fmt='k-', label='UCB-N')
-    ax.errorbar(x, avg_losses[:,2], yerr=std_losses[:,2],fmt='b-', label='UCB-H')
-    ax.errorbar(x, avg_losses[:,3], yerr=std_losses[:,3],fmt='g-', label='UCB-D')
-    ax.errorbar(x, avg_losses[:,4], yerr=std_losses[:,4],fmt='c-', label='UCB-T')
-    ax.errorbar(x, avg_losses[:,5], yerr=std_losses[:,5],fmt='y-', label='UCB-VT')
+    ax.errorbar(x, avg_losses[0], yerr=std_losses[0],fmt='r-', label='UCB-C')
+    ax.errorbar(x, avg_losses[1], yerr=std_losses[1],fmt='k-', label='UCB-N')
+    ax.errorbar(x, avg_losses[2], yerr=std_losses[2],fmt='b-', label='UCB-H')
+    ax.errorbar(x, avg_losses[3], yerr=std_losses[3],fmt='g-', label='UCB-D')
+    ax.errorbar(x, avg_losses[4], yerr=std_losses[4],fmt='c-', label='UCB-T')
+#    ax.errorbar(x, avg_losses[5], yerr=std_losses[5],fmt='y-', label='UCB-VT')
     ax.axhline(y=0.0,c="magenta",linewidth=2,zorder=10)
     legend = ax.legend(loc='upper right', shadow=True)
     plt.xlabel('Rounds')
@@ -604,21 +652,33 @@ def plotting(c,alpha,K,text_file):
     plt.savefig('./losses_K'+str(len(experts))+'_c'+str(c)+'.png')
 
     fig, ax = plt.subplots()
-    ax.errorbar(x, avg_counts[:,0], yerr=std_counts[:,0],fmt='r-', label='UCB-C')
-    ax.errorbar(x, avg_counts[:,1], yerr=std_counts[:,1],fmt='k-', label='UCB-N')
-    ax.errorbar(x, avg_counts[:,2], yerr=std_counts[:,2],fmt='b-', label='UCB-H')
-    ax.errorbar(x, avg_counts[:,3], yerr=std_counts[:,3],fmt='g-', label='UCB-D')
-    ax.errorbar(x, avg_counts[:,4], yerr=std_counts[:,4],fmt='c-', label='UCB-T')
-    ax.errorbar(x, avg_counts[:,5], yerr=std_counts[:,5],fmt='y-', label='UCB-VT')
+    ax.errorbar(x, avg_counts[0], yerr=std_counts[0],fmt='r-', label='UCB-C')
+    ax.errorbar(x, avg_counts[1], yerr=std_counts[1],fmt='k-', label='UCB-N')
+    ax.errorbar(x, avg_counts[2], yerr=std_counts[2],fmt='b-', label='UCB-H')
+    ax.errorbar(x, avg_counts[3], yerr=std_counts[3],fmt='g-', label='UCB-D')
+    ax.errorbar(x, avg_counts[4], yerr=std_counts[4],fmt='c-', label='UCB-T')
+#    ax.errorbar(x, avg_counts[5], yerr=std_counts[5],fmt='y-', label='UCB-VT')
     legend = ax.legend(loc='upper right', shadow=True)
     plt.xlabel('Rounds')
     plt.ylabel('Fraction of Rejection')
     plt.title('Fraction of Rejection for '+str(len(experts))+' arms with c '+str(c))
     plt.savefig('./counts_K'+str(len(experts))+'_c'+str(c)+'.png')
 
+def tic():
+    #Homemade version of matlab tic and toc functions
+    import time
+    global startTime_for_tictoc
+    startTime_for_tictoc = time.time()
+
+def toc():
+    import time
+    if 'startTime_for_tictoc' in globals():
+        print "Elapsed time is " + str(time.time() - startTime_for_tictoc) + " seconds."
+    else:
+        print "Toc: start time not set"
 ############# ############# ############# ############# #############  MAIN ############# ############# ############# ############# ############# 
 if __name__ == "__main__":
-
+    tic()
     alpha=3
     val=int(sys.argv[1])
     K_values=[100,50,20]
@@ -638,4 +698,4 @@ if __name__ == "__main__":
     text_file = open("./Output_" + str(K) + "arms.txt", "w")
     plotting(c,alpha,K,text_file) #last plot point is for T=2000                   
     text_file.close()
-
+    toc()
