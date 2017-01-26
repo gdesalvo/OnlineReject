@@ -145,49 +145,6 @@ def ucbn(c, alpha, experts, dat):
     expert_pulls = [0.0] * K 
     loss_alg = 0
     count_rej=0
-    #initialization step
-    # for i in range(K):
-    #     expert_label=exp_label(dat[i][0], experts[i])
-    #     if expert_label==-1:
-    #         count_rej+=1
-    #     exp_loss = rej_loss(dat[i][1], expert_label, c)
-    #     expert_avg.append(exp_loss)
-    #     loss_alg += exp_loss
-    # expert_pulls = [1.0] * K #number of times expert is observed! 
-
-
-#     K = len(experts)
-#     T = len(dat)
-# #    print '\n\n UCB N'
-#     expert_avg = [0]*K
-#     expert_pulls=[0]*K
-#     loss_alg = 0
-#     count_rej=0
-#     #initialization step
-#     for i in range(K):
-#         expert_label=exp_label(dat[i][0], experts[i])
-#         if expert_label== -1:
-#             count_rej+=1
-#             #update rejecting experts
-#             for jj in range(K): #soinefficient
-#                 if exp_label(dat[i][0], experts[jj]) == -1:
-#                     expert_pulls[jj] += 1
-#                     inv_pull = 1.0 / expert_pulls[jj]
-#                     expert_avg[jj] = c * inv_pull + (1 - inv_pull) * expert_avg[jj]
-#         else:
-#             #update all experts
-#             for jj in range(K): 
-#                 expert_pulls[jj] += 1
-#                 inv_pull = 1.0 / expert_pulls[jj]
-#                 current_loss = rej_loss(dat[i][1], exp_label(dat[i][0], experts[jj]), c) 
-#                 expert_avg[jj] = current_loss * inv_pull + (1 - inv_pull) * expert_avg[jj]
-            
-
-#         exp_loss = rej_loss(dat[i][1], expert_label, c)
-#         loss_alg += exp_loss
-
-#        expert_avg.append(exp_loss)
- #   expert_pulls = [1.0] * K #number of times expert is observed! 
 
     for t in range(T):
         #find best arm
@@ -228,18 +185,6 @@ def ucbcc(c, alpha, experts, dat):
     loss_alg = 0
     count_rej=0
 
-    #initialization step
-    # for i in range(K):
-    #     expert_label = exp_hyp_label(dat[i][0], experts[i])  # explicitly accept
-    #     if expert_label==-1:
-    #         count_rej+=1
-    #     for j in range(K):
-    #         if exp_label(dat[i][0], experts[j]) != -1:
-    #             expert_cnt_acc[j] += 1
-    #         expert_pulls[j] += 1  # always increment upon accept
-    #     expert_hyp_loss = rej_loss(dat[i][1], expert_label, c)
-    #     expert_hyp_losses[i] += expert_hyp_loss
-    #     loss_alg += expert_hyp_loss
 
     for t in range(T):
 
@@ -286,18 +231,6 @@ def ucbd(c, alpha, experts, dat):
     loss_alg = 0
     count_rej=0
 
-    # #initialization step
-    # for i in range(K):
-    #     expert_label = exp_hyp_label(dat[i][0], experts[i])  # explicitly accept
-    #     if expert_label==-1:
-    #         count_rej+=1
-    #     for j in range(K):
-    #         if exp_label(dat[i][0], experts[j]) != -1:
-    #             expert_cnt_acc[j] += 1
-    #         expert_pulls[j] += 1  # always increment upon accept
-    #     expert_hyp_loss = rej_loss(dat[i][1], expert_label, c)
-    #     expert_hyp_losses[i] += expert_hyp_loss
-    #     loss_alg += expert_hyp_loss
 
     for t in range( T):
 
@@ -416,19 +349,7 @@ def ucbt(c, alpha, experts, dat):
     expert_pulls = [0.0]*K #counts the number of times when r>0
     loss_alg = 0
     count_rej=0
-    #initialization step
-    # for i in range(K):
-    #     expert_label = exp_label(dat[i][0], experts[i])
-    #     if expert_label != -1:
-    #         exp_loss = rej_loss(dat[i][1], expert_label, c) 
-    #         hyp_expert_avg[str(i)] = exp_loss  #prob should define zero/one loss and use it here
-    #         loss_alg += exp_loss
-    #         expert_pulls.append(1)
-    #     else:
-    #         expert_pulls.append(0)
-    #         loss_alg += c
-    #         count_rej+=1
-    
+
     for t in range(T):
         #use dictionary so keep track of which are accepting and rejecting experts at time t
         acc_exp = {}  
@@ -467,13 +388,13 @@ def ucbt(c, alpha, experts, dat):
                 best_arm = int(min(rej_exp, key=rej_exp.get))
                 count_rej+=1
             else:
+                #if no good accepting experts and no rejecting experts pick some random accepting expert
                 best_arm = int(min(acc_exp, key=acc_exp.get))
 
         
         #update regret
         best_expert_label = save_expert_labels[best_arm]
         expert_loss = rej_loss(dat[t][1], best_expert_label, c) #technically you are calculate loss of best expert twice but meh
-        #print best_arm, expert_loss,expert_pulls[best_arm]
         loss_alg += expert_loss
 #        print str(dat[t][0])+","+str(best_arm)+","+ str(experts[best_arm])+",   " +str(expert_loss)+","+str(loss_alg) +","+ 'ucbH'
         if best_expert_label != -1:
@@ -495,24 +416,11 @@ def ucbt(c, alpha, experts, dat):
 def ucbvt(c, alpha, experts, dat):
     K = len(experts)
     T = len(dat)
-#    print '\n\n ucbH'
     hyp_expert_avg = {} #only care of emperical average over hyp_experts.
     expert_pulls = [0.0]*K #counts the number of times when r>0
     loss_alg = 0
     count_rej=0
-    #initialization step
-    # for i in range(K):
-    #     expert_label = exp_label(dat[i][0], experts[i])
-    #     if expert_label != -1:
-    #         exp_loss = rej_loss(dat[i][1], expert_label, c) 
-    #         hyp_expert_avg[str(i)] = exp_loss  #prob should define zero/one loss and use it here
-    #         loss_alg += exp_loss
-    #         expert_pulls.append(1)
-    #     else:
-    #         expert_pulls.append(0)
-    #         loss_alg += c
-    #         count_rej+=1
-    
+
     for t in range(T):
         #use dictionary so keep track of which are accepting and rejecting experts at time t
         acc_exp = {}  
@@ -585,7 +493,7 @@ def ucbvt(c, alpha, experts, dat):
 def plotting(c,alpha,K,text_file):
 #NEED TO IMRPOVE THIS PLOTTING FUNCTION BC IT SUCKS
 
-    NUM_AVG=3
+    NUM_AVG=5
     avg_regret=[]
     avg_counts=[]
     avg_losses=[]
@@ -595,13 +503,13 @@ def plotting(c,alpha,K,text_file):
             loss=[]
             count_rejection=[]
             expert_loss=[]
-            x=range(200,1000,200) #maybe use T instead?
+            x=range(200,5000,500) #maybe use T instead?
             for rounds in x:
                 loss_at_t=[]
                 count_at_t=[]
                 expert_loss_at_t=[]
 
-                for p in range(4):
+                for p in range(20):
                         data=create_data(rounds)
                         loss_experts=loss_of_every_expert(data,experts,c)                
                         loss1,countrej1=ucbcc(c,alpha,experts,data)
@@ -648,14 +556,22 @@ def plotting(c,alpha,K,text_file):
     text_file.write('; regret UCBN:'+str(avg_regret[:,1])+'; std UCBN:'+str(std_regret[:,1]))
     text_file.write('; regret UCBH:'+str(avg_regret[:,2])+'; std UCBH:'+str(std_regret[:,2]))
     text_file.write('; regret UCBD:'+str(avg_regret[:,3])+'; std UCBD:'+str(std_regret[:,3]))
+    text_file.write('; regret UCBT:'+str(avg_regret[:,4])+'; std UCBT:'+str(std_regret[:,4]))
+    text_file.write('; regret UCBVT:'+str(avg_regret[:,5])+'; std UCBVT:'+str(std_regret[:,5]))
+
     text_file.write('; losses UCBC:'+str(avg_losses[:,0])+'; std UCB:'+str(std_losses[:,0]))
     text_file.write('; losses UCBN:'+str(avg_losses[:,1])+'; std UCBN:'+str(std_losses[:,1]))
     text_file.write('; losses UCBH:'+str(avg_losses[:,2])+'; std UCBH:'+str(std_losses[:,2]))
     text_file.write('; losses UCBD:'+str(avg_losses[:,3])+'; std UCBD:'+str(std_losses[:,3]))
+    text_file.write('; losses UCBT:'+str(avg_losses[:,4])+'; std UCBT:'+str(std_losses[:,4]))
+    text_file.write('; losses UCBVT:'+str(avg_losses[:,5])+'; std UCBVT:'+str(std_losses[:,5]))
+
     text_file.write('; counts UCBC:'+str(avg_counts[:,0])+'; std UCB:'+str(std_counts[:,0]))
     text_file.write('; counts UCBN:'+str(avg_counts[:,1])+'; std UCBN:'+str(std_counts[:,1]))
     text_file.write('; counts UCBH:'+str(avg_counts[:,2])+'; std UCBH:'+str(std_counts[:,2]))
     text_file.write('; counts UCBD:'+str(avg_counts[:,3])+'; std UCBD:'+str(std_counts[:,3]))
+    text_file.write('; counts UCBT:'+str(avg_counts[:,4])+'; std UCBT:'+str(std_counts[:,4]))
+    text_file.write('; counts UCBVT:'+str(avg_counts[:,5])+'; std UCBVT:'+str(std_counts[:,5]))
 
 
 
@@ -703,18 +619,6 @@ def plotting(c,alpha,K,text_file):
 ############# ############# ############# ############# #############  MAIN ############# ############# ############# ############# ############# 
 if __name__ == "__main__":
 
-    #parameters
-#    alpha = 3
-#    K = int(sys.argv[1])
-#    text_file = open("./figures/Output"+str(K)+".txt", "w")
-#    c_values=[0.4]
-    #c_values=[0.05,0.2,0.4,0.6,1,2,10]
- #   for c in c_values:
- #           print 'workin on c'+str(c)
- #           plotting(c,alpha,K,text_file) #last plot point is for T=2000
-            
- #   text_file.close()
-
     alpha=3
     val=int(sys.argv[1])
     K_values=[100,50,20]
@@ -730,28 +634,8 @@ if __name__ == "__main__":
         c= c_values[int(sys.argv[1])-15]
     else:
         print 'too high values'
-    print c
-    print K
+
     text_file = open("./Output_" + str(K) + "arms.txt", "w")
     plotting(c,alpha,K,text_file) #last plot point is for T=2000                   
     text_file.close()
 
-
-    #All algorithms should share same data and same experts. 
-#    experts, data = create_experts_and_data(K, T)
-#    avgloss_best = loss_of_best_expert(data, experts, c) / T
-#    avgloss_ucb = ucb(c, alpha, experts, data)
-#    avgloss_ucbn = ucbn(c, alpha, experts, data)
-#    avgloss_ucbh = ucbh(c, alpha, experts, data)
-#    avgloss_ucbd = ucbd(c, alpha, experts, data)
-#    reg1 = avgloss_ucb - avgloss_best
-#    reg2 = avgloss_ucbn - avgloss_best
-#    reg3 = avgloss_ucbh - avgloss_best
-#    reg4 = avgloss_ucbd - avgloss_best
-
-#    print "loss best arm " + str(avgloss_best)
-#    print "loss of UCB " + str(avgloss_ucb) + ", loss of UCB-N " + str(avgloss_ucbn) + ", loss of UCB-H " + str(avgloss_ucbh) + ", loss of UCB-D " + str(avgloss_ucbd)
-#    print "regret of UCB " + str(reg1) + ", regret of UCB-N " + str(reg2) + ", regret of UCB-H " + str(reg3) + ", regret of UCB-D " + str(reg4)
-    
-#    if int(sys.argv[3]) == 1:
-#        c_values=[0.05, 0.4]
