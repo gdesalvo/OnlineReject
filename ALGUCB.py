@@ -8,11 +8,19 @@ import matplotlib.pyplot as plt
 #random.seed(3428)
 random.seed(1234)
 ############# ############# ############# ############# #############  HELPER FUNCTIONS ############# ############# ############# ############# ############# 
-def create_experts(K):
+def create_experts(K, random):
     #creating the rejecting and hypothesis experts according to threholds
-    rej_experts = [random.uniform(0.0, 1.0) for itr in range(K)] # reject if rej_experts[i] < data, 
+    if random:
+        rej_experts = [random.uniform(0.0, 1.0) for itr in range(K)] # reject if rej_experts[i] < data, 
+    else:
+        rej_experts = list(np.linspace(0.0, 1.0, K))
  #   rej_experts.append(0.0)
-    hyp_experts = [random.uniform(0.0, 0.3) for itr in range(K)]  # classification surface is given by threhold rej_expert[i]+hyp_expert[i]
+
+    if random:
+        hyp_experts = [random.uniform(0.0, 0.3) for itr in range(K)]  # classification surface is given by threhold rej_expert[i]+hyp_expert[i]
+    else:
+        hyp_experts = list(np.linspace(0.0, 0.3, K))
+
 #    hyp_experts.append(0.6)
     experts = zip(rej_experts, hyp_experts) #expert format is list of tuple [(rej_threshold1, hyp_threshold1),(rej_threshold2, hyp_threshold2).... ]    
     # fexperts=[]
@@ -443,7 +451,7 @@ def ucbhnew(c, alpha, experts, dat):
 ############# ############# ############# ############# #############  PLOTTING ############# ############# ############# ############# ############# 
 def plotting(c,alpha,K,text_file):
 #NEED TO IMRPOVE THIS PLOTTING FUNCTION BC IT SUCKS
-    experts= create_experts(K)
+    experts= create_experts(K, True)
     NUM_AVG=3
     avg_regret=[]
     avg_counts=[]
