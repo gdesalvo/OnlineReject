@@ -107,7 +107,7 @@ def ucb(c, alpha, experts, dat):
 
     for t in range(K, T):
         #find best arm
-        lcb_list = [expert_avg[i] - lcb_bound(t, expert_pulls[i], alpha) for i in range(K)] #soinefficient
+        lcb_list = [max(expert_avg[i] - lcb_bound(t, expert_pulls[i], alpha), 0.0) for i in range(K)] #soinefficient
         best_arm = lcb_list.index(min(lcb_list)) 
 
         expert_pulls[best_arm] += 1 #update number of times arm is pulled
@@ -144,7 +144,7 @@ def ucbn(c, alpha, experts, dat):
 
     for t in range(K, T):
         #find best arm
-        lcb_list=[expert_avg[i] - lcb_bound(t, expert_pulls[i], alpha) for i in range(K)] #soinefficient
+        lcb_list=[max(expert_avg[i] - lcb_bound(t, expert_pulls[i], alpha), 0.0) for i in range(K)] #soinefficient
         best_arm = lcb_list.index(min(lcb_list)) 
         #update regret
         expert_label = exp_label(dat[t][0], experts[best_arm])
@@ -202,9 +202,9 @@ def ucbcc(c, alpha, experts, dat):
             exp_prob_acc = expert_cnt_acc[i] / t
             exp_prob_rej = 1 - exp_prob_acc
             if exp_label(dat[t][0],experts[i])!=-1:
-                expert_lcbs.append((exp_prob_acc - lcb_bound(t, t, alpha)) * ((expert_hyp_losses[i] / expert_pulls[i]) - lcb_bound(t, expert_pulls[i], alpha)))
+                expert_lcbs.append(max(exp_prob_acc - lcb_bound(t, t, alpha),0.0) * max((expert_hyp_losses[i] / expert_pulls[i]) - lcb_bound(t, expert_pulls[i], alpha),0.0))
             else:
-                expert_lcbs.append( (exp_prob_rej - lcb_bound(t, t, alpha)) * c) 
+                expert_lcbs.append(max(exp_prob_rej - lcb_bound(t, t, alpha), 0.0) * c) 
         
         #find best arm
         best_arm = expert_lcbs.index(min(expert_lcbs)) 
@@ -258,7 +258,7 @@ def ucbd(c, alpha, experts, dat):
         for i in range(K):
             exp_prob_acc = expert_cnt_acc[i] / t
             exp_prob_rej = 1 - exp_prob_acc
-            expert_lcbs.append((exp_prob_acc - lcb_bound(t, t, alpha)) * ((expert_hyp_losses[i] / expert_pulls[i]) - lcb_bound(t, expert_pulls[i], alpha)) + (exp_prob_rej - lcb_bound(t, t, alpha)) * c) 
+            expert_lcbs.append(max(exp_prob_acc - lcb_bound(t, t, alpha), 0.0) * max((expert_hyp_losses[i] / expert_pulls[i]) - lcb_bound(t, expert_pulls[i], alpha), 0.0) + max(exp_prob_rej - lcb_bound(t, t, alpha), 0.0) * c) 
         
         #find best arm
         best_arm = expert_lcbs.index(min(expert_lcbs)) 
@@ -315,14 +315,14 @@ def ucbh(c, alpha, experts, dat):
             save_expert_labels.append(expert_label)
             if expert_label!=-1:
                 if str(i) in hyp_expert_avg.keys():
-                    acc_exp[str(i)] = hyp_expert_avg[str(i)] - lcb_bound(t,expert_pulls[i],alpha)
+                    acc_exp[str(i)] = max(hyp_expert_avg[str(i)] - lcb_bound(t,expert_pulls[i],alpha), 0.0)
                 else:
-                    acc_exp[str(i)] = -float("inf")  #if you never pulled an arm before the LCB is -inf
+                    acc_exp[str(i)] = 0.0  # -float("inf")  #if you never pulled an arm before the LCB is -inf
             else:
                 if str(i) in hyp_expert_avg.keys():
-                    rej_exp[str(i)] = hyp_expert_avg[str(i)] - lcb_bound(t,expert_pulls[i],alpha)
+                    rej_exp[str(i)] = max(hyp_expert_avg[str(i)] - lcb_bound(t,expert_pulls[i],alpha), 0.0)
                 else:
-                    rej_exp[str(i)] = -float("inf")
+                    rej_exp[str(i)] = 0.0  # -float("inf")
                     
 
         #find best arm
@@ -392,14 +392,14 @@ def ucbhnew(c, alpha, experts, dat):
             save_expert_labels.append(expert_label)
             if expert_label!=-1:
                 if str(i) in hyp_expert_avg.keys():
-                    acc_exp[str(i)] = hyp_expert_avg[str(i)] - lcb_bound(t,expert_pulls[i],alpha)
+                    acc_exp[str(i)] = max(hyp_expert_avg[str(i)] - lcb_bound(t,expert_pulls[i],alpha), 0.0)
                 else:
-                    acc_exp[str(i)] = -float("inf")  #if you never pulled an arm before the LCB is -inf
+                    acc_exp[str(i)] = 0.0  # -float("inf")  #if you never pulled an arm before the LCB is -inf
             else:
                 if str(i) in hyp_expert_avg.keys():
-                    rej_exp[str(i)] = hyp_expert_avg[str(i)] - lcb_bound(t,expert_pulls[i],alpha)
+                    rej_exp[str(i)] = max(hyp_expert_avg[str(i)] - lcb_bound(t,expert_pulls[i],alpha), 0.0)
                 else:
-                    rej_exp[str(i)] = -float("inf")
+                    rej_exp[str(i)] = 0.0  # -float("inf")
                     
 
         #find best arm
