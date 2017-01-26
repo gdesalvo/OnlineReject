@@ -46,7 +46,7 @@ def create_experts(K, want_random):
 def create_data(T):
  
     #creating data according to gaussian and labels
-    x_data = [random.gauss(0.6, 0.3) for itr in range(T)]
+    x_data = [random.gauss(0.6, 0.1) for itr in range(T)]
     y_labels = [ int(itr >= 0.6)  for itr in x_data]
 #    x_data = [random.uniform(0, 1) for itr in range(T)]
 #    y_labels = [ int(itr >= 0.5)  for itr in x_data]
@@ -165,8 +165,6 @@ def ucbn(c, alpha, experts, dat, return_rounds):
         #update regret
         expert_label = exp_label(dat[t][0], experts[best_arm])
         expert_loss = rej_loss(dat[t][1], expert_label, c) 
-
-#        print best_arm,expert_loss
         loss_alg += expert_loss
 #        print str(dat[t][0])+","+str(best_arm)+","+ str(experts[best_arm])+",   " +str(expert_loss)+","+str(loss_alg) +","+ 'ucbN'
         if expert_label == -1:
@@ -310,52 +308,37 @@ def ucbh(c, alpha, experts, dat,return_rounds):
     expert_pulls = [0.0]*K #counts the number of times when r>0
     loss_alg = 0
     count_rej=0
-    #initialization step
-    # for i in range(K):
-    #     expert_label = exp_label(dat[i][0], experts[i])
-    #     if expert_label != -1:
-    #         exp_loss = rej_loss(dat[i][1], expert_label, c) 
-    #         hyp_expert_avg[str(i)] = exp_loss  #prob should define zero/one loss and use it here
-    #         loss_alg += exp_loss
-    #         expert_pulls.append(1)
-    #     else:
-    #         expert_pulls.append(0)
-    #         loss_alg += c
-    #         count_rej+=1
-    
+
     for t in range(T):
         #use dictionary so keep track of which are accepting and rejecting experts at time t
         acc_exp = {}  
         rej_exp = {}
-
         save_expert_labels=[]
         for i in range(K):
             #separate rejecting and accepting experts according to their label (not really kosher but essence the same)
             expert_label = exp_label(dat[t][0], experts[i])
             save_expert_labels.append(expert_label)
             if expert_label!=-1:
-                if str(i) in hyp_expert_avg.keys():
-                    acc_exp[str(i)] = max(hyp_expert_avg[str(i)] - lcb_bound(t,expert_pulls[i],alpha), 0.0)
+                if i in hyp_expert_avg.keys():
+                    acc_exp[i] = max(hyp_expert_avg[i] - lcb_bound(t,expert_pulls[i],alpha), 0.0)
                 else:
-                    acc_exp[str(i)] = 0.0  # -float("inf")  #if you never pulled an arm before the LCB is -inf
+                    acc_exp[i] = 0.0  # -float("inf")  #if you never pulled an arm before the LCB is -inf
             else:
-                if str(i) in hyp_expert_avg.keys():
-                    rej_exp[str(i)] = max(hyp_expert_avg[str(i)] - lcb_bound(t,expert_pulls[i],alpha), 0.0)
+                if i in hyp_expert_avg.keys():
+                    rej_exp[i] = max(hyp_expert_avg[i] - lcb_bound(t,expert_pulls[i],alpha), 0.0)
                 else:
-                    rej_exp[str(i)] = 0.0  # -float("inf")
+                    rej_exp[i] = 0.0  # -float("inf")
                     
-
         #find best arm
         if bool(acc_exp) == True and acc_exp[min(acc_exp, key=acc_exp.get)] < c:
-                best_arm = int(min(acc_exp, key=acc_exp.get))
+                best_arm = min(acc_exp, key=acc_exp.get)
         else:
             if bool(rej_exp) == True:
-                best_arm = int(min(rej_exp, key=rej_exp.get))
+                best_arm = min(rej_exp, key=rej_exp.get)
                 count_rej+=1
             else:
-                best_arm = int(min(acc_exp, key=acc_exp.get))
+                best_arm = min(acc_exp, key=acc_exp.get)
 
-        
         #update regret
         best_expert_label = save_expert_labels[best_arm]
         expert_loss = rej_loss(dat[t][1], best_expert_label, c) #technically you are calculate loss of best expert twice but meh
@@ -366,13 +349,14 @@ def ucbh(c, alpha, experts, dat,return_rounds):
             # if pulled a nonrej expert update all acc_experts
             for jj in range(len(save_expert_labels)):
                 if save_expert_labels[jj] != -1:
-                        if str(jj) in hyp_expert_avg.keys():
+                        if jj in hyp_expert_avg.keys():
                             expert_pulls[jj] += 1
                             inv_pull = 1.0 / expert_pulls[jj]
-                            hyp_expert_avg[str(jj)] = rej_loss(dat[t][1], save_expert_labels[jj], c) * inv_pull + (1.0 - inv_pull) * hyp_expert_avg[str(jj)]
+                            hyp_expert_avg[jj] = rej_loss(dat[t][1], save_expert_labels[jj], c) * inv_pull + (1.0 - inv_pull) * hyp_expert_avg[jj]
                         else:
                             expert_pulls[jj] += 1
-                            hyp_expert_avg[str(jj)] = rej_loss(dat[t][1], save_expert_labels[jj], c)
+                            hyp_expert_avg[jj] = rej_loss(dat[t][1], save_expert_labels[jj], c)
+
         if enum_return_rounds < len(return_rounds) and t==return_rounds[enum_return_rounds]:
             loss_alg_at_return_rounds.append(loss_alg/float(t))
             count_rej_at_return_rounds.append(count_rej/float(t))
@@ -406,34 +390,34 @@ def ucbt(c, alpha, experts, dat,return_rounds):
             save_expert_labels.append(expert_label)
             if expert_label!=-1:
                 if 1.0-(expert_pulls[i])/(t+1) <= gamma:  # fractin of times r rejected is less than gamma
-                    if str(i) in hyp_expert_avg.keys():
-                        good_acc_exp[str(i)] = max(hyp_expert_avg[str(i)] - lcb_bound(t,expert_pulls[i],alpha), 0.0)
+                    if i in hyp_expert_avg.keys():
+                        good_acc_exp[i] = max(hyp_expert_avg[i] - lcb_bound(t,expert_pulls[i],alpha), 0.0)
                     else:
                         #i dont think this every happens
-                        good_acc_exp[str(i)] = 0.0  # -float("inf")  #if you never pulled an arm before the LCB is -inf
+                        good_acc_exp[i] = 0.0  # -float("inf")  #if you never pulled an arm before the LCB is -inf
 
-                if str(i) in hyp_expert_avg.keys():
-                        acc_exp[str(i)] = max(hyp_expert_avg[str(i)] - lcb_bound(t,expert_pulls[i],alpha), 0.0)
+                if i in hyp_expert_avg.keys():
+                        acc_exp[i] = max(hyp_expert_avg[i] - lcb_bound(t,expert_pulls[i],alpha), 0.0)
                 else:
-                        acc_exp[str(i)] = 0.0  # -float("inf")  #if you never pulled an arm before the LCB is -inf
+                        acc_exp[i] = 0.0  # -float("inf")  #if you never pulled an arm before the LCB is -inf
             else:
-                if str(i) in hyp_expert_avg.keys():
-                    rej_exp[str(i)] = max(hyp_expert_avg[str(i)] - lcb_bound(t,expert_pulls[i],alpha), 0.0)
+                if i in hyp_expert_avg.keys():
+                    rej_exp[i] = max(hyp_expert_avg[i] - lcb_bound(t,expert_pulls[i],alpha), 0.0)
                 else:
-                    rej_exp[str(i)] = 0.0  # -float("inf")
+                    rej_exp[i] = 0.0  # -float("inf")
                     
 
         #find best arm
         if bool(good_acc_exp) == True and good_acc_exp[min(good_acc_exp, key=good_acc_exp.get)] < c:
-                best_arm = int(min(good_acc_exp, key=good_acc_exp.get))
+                best_arm = min(good_acc_exp, key=good_acc_exp.get)
                 
         else:
             if bool(rej_exp) == True:
-                best_arm = int(min(rej_exp, key=rej_exp.get))
+                best_arm = min(rej_exp, key=rej_exp.get)
                 count_rej+=1
             else:
                 #if no good accepting experts and no rejecting experts pick some random accepting expert
-                best_arm = int(min(acc_exp, key=acc_exp.get))
+                best_arm = min(acc_exp, key=acc_exp.get)
 
         
         #update regret
@@ -445,13 +429,13 @@ def ucbt(c, alpha, experts, dat,return_rounds):
             # if pulled a nonrej expert update all acc_experts
             for jj in range(len(save_expert_labels)):
                 if save_expert_labels[jj] != -1:
-                        if str(jj) in hyp_expert_avg.keys():
+                        if jj in hyp_expert_avg.keys():
                             expert_pulls[jj] += 1
                             inv_pull = 1.0 / expert_pulls[jj]
-                            hyp_expert_avg[str(jj)] = rej_loss(dat[t][1], save_expert_labels[jj], c) * inv_pull + (1.0 - inv_pull) * hyp_expert_avg[str(jj)]
+                            hyp_expert_avg[jj] = rej_loss(dat[t][1], save_expert_labels[jj], c) * inv_pull + (1.0 - inv_pull) * hyp_expert_avg[jj]
                         else:
                             expert_pulls[jj] += 1
-                            hyp_expert_avg[str(jj)] = rej_loss(dat[t][1], save_expert_labels[jj], c)
+                            hyp_expert_avg[jj] = rej_loss(dat[t][1], save_expert_labels[jj], c)
 
         if enum_return_rounds < len(return_rounds) and t==return_rounds[enum_return_rounds]:
             loss_alg_at_return_rounds.append(loss_alg/float(t))
@@ -488,33 +472,33 @@ def ucbvt(c, alpha, experts, dat,return_rounds):
                 save_expert_labels.append(expert_label)
                 if expert_label!=-1:
                     if 1.0-(expert_pulls[i])/(t+1) <= ( 1.0-1.0/float(T) ):  # fractin of times r rejected is less than gamma
-                        if str(i) in hyp_expert_avg.keys():
-                            good_acc_exp[str(i)] = max(hyp_expert_avg[str(i)] - lcb_bound(t,expert_pulls[i],alpha), 0.0)
+                        if i in hyp_expert_avg.keys():
+                            good_acc_exp[i] = max(hyp_expert_avg[i] - lcb_bound(t,expert_pulls[i],alpha), 0.0)
                         else:
                             #i dont think this every happens
-                            good_acc_exp[str(i)] = 0.0  # -float("inf")  #if you never pulled an arm before the LCB is -inf
+                            good_acc_exp[i] = 0.0  # -float("inf")  #if you never pulled an arm before the LCB is -inf
 
-                    if str(i) in hyp_expert_avg.keys():
-                            acc_exp[str(i)] = max(hyp_expert_avg[str(i)] - lcb_bound(t,expert_pulls[i],alpha), 0.0)
+                    if i in hyp_expert_avg.keys():
+                            acc_exp[i] = max(hyp_expert_avg[i] - lcb_bound(t,expert_pulls[i],alpha), 0.0)
                     else:
-                            acc_exp[str(i)] = 0.0  # -float("inf")  #if you never pulled an arm before the LCB is -inf
+                            acc_exp[i] = 0.0  # -float("inf")  #if you never pulled an arm before the LCB is -inf
                 else:
-                    if str(i) in hyp_expert_avg.keys():
-                        rej_exp[str(i)] = max(hyp_expert_avg[str(i)] - lcb_bound(t,expert_pulls[i],alpha), 0.0)
+                    if i in hyp_expert_avg.keys():
+                        rej_exp[i] = max(hyp_expert_avg[i] - lcb_bound(t,expert_pulls[i],alpha), 0.0)
                     else:
-                        rej_exp[str(i)] = 0.0  # -float("inf")
+                        rej_exp[i] = 0.0  # -float("inf")
 
 
             #find best arm
             if bool(good_acc_exp) == True and good_acc_exp[min(good_acc_exp, key=good_acc_exp.get)] < c:
-                    best_arm = int(min(good_acc_exp, key=good_acc_exp.get))
+                    best_arm = min(good_acc_exp, key=good_acc_exp.get)
 
             else:
                 if bool(rej_exp) == True:
-                    best_arm = int(min(rej_exp, key=rej_exp.get))
+                    best_arm = min(rej_exp, key=rej_exp.get)
                     count_rej+=1
                 else:
-                    best_arm = int(min(acc_exp, key=acc_exp.get))
+                    best_arm = min(acc_exp, key=acc_exp.get)
 
 
             #update regret
@@ -527,13 +511,13 @@ def ucbvt(c, alpha, experts, dat,return_rounds):
                 # if pulled a nonrej expert update all acc_experts
                 for jj in range(len(save_expert_labels)):
                     if save_expert_labels[jj] != -1:
-                            if str(jj) in hyp_expert_avg.keys():
+                            if jj in hyp_expert_avg.keys():
                                 expert_pulls[jj] += 1
                                 inv_pull = 1.0 / expert_pulls[jj]
-                                hyp_expert_avg[str(jj)] = rej_loss(dat[t][1], save_expert_labels[jj], c) * inv_pull + (1.0 - inv_pull) * hyp_expert_avg[str(jj)]
+                                hyp_expert_avg[jj] = rej_loss(dat[t][1], save_expert_labels[jj], c) * inv_pull + (1.0 - inv_pull) * hyp_expert_avg[jj]
                             else:
                                 expert_pulls[jj] += 1
-                                hyp_expert_avg[str(jj)] = rej_loss(dat[t][1], save_expert_labels[jj], c)
+                                hyp_expert_avg[jj] = rej_loss(dat[t][1], save_expert_labels[jj], c)
 
 
 
@@ -552,8 +536,8 @@ def ucbvt(c, alpha, experts, dat,return_rounds):
 def plotting(c,alpha,K,text_file):
 #NEED TO IMRPOVE THIS PLOTTING FUNCTION BC IT SUCKS
 
-    NUM_AVG=3
-    T_MAX=6000
+    NUM_AVG=2
+    T_MAX=1000
     avg_regret=[]
     avg_counts=[]
     avg_losses=[]
@@ -566,9 +550,9 @@ def plotting(c,alpha,K,text_file):
             count=[]
             expert_loss=[]
 
-            for p in range(10):
+            for p in range(1):
                 data=create_data(T_MAX)
-                loss_experts=loss_of_every_expert(data,experts,c,x)                
+                loss_experts=loss_of_every_expert(data,experts,c,x) 
                 loss1,countrej1=ucbcc(c,alpha,experts,data,x) #returns values of all needed roudns
                 loss2,countrej2=ucbn(c,alpha,experts,data,x)
                 loss3,countrej3=ucbh(c,alpha,experts,data,x)
@@ -678,7 +662,7 @@ def toc():
         print "Toc: start time not set"
 ############# ############# ############# ############# #############  MAIN ############# ############# ############# ############# ############# 
 if __name__ == "__main__":
-    tic()
+
     alpha=3
     val=int(sys.argv[1])
     K_values=[100,50,20]
@@ -698,4 +682,4 @@ if __name__ == "__main__":
     text_file = open("./Output_" + str(K) + "arms.txt", "w")
     plotting(c,alpha,K,text_file) #last plot point is for T=2000                   
     text_file.close()
-    toc()
+
