@@ -10,19 +10,26 @@ random.seed(3428)
 ############# ############# ############# ############# #############  HELPER FUNCTIONS ############# ############# ############# ############# ############# 
 def create_experts(K, want_random):
     #creating the rejecting and hypothesis experts according to threholds
-    if want_random:
-        rej_experts = [random.uniform(0.0, 1.0) for itr in range(K)] # reject if rej_experts[i] < data, 
-    else:
-        rej_experts = list(np.linspace(0.0, 1.0, K))
+#    if want_random:
+#        rej_experts = [random.uniform(0.0, 1.0) for itr in range(K)] # reject if rej_experts[i] < data, 
+#    else:
+#        rej_experts = list(np.linspace(0.0, 1.0, K))
 
 
-    if want_random:
-        hyp_experts = [random.uniform(0.0, 0.3) for itr in range(K)]  # classification surface is given by threhold rej_expert[i]+hyp_expert[i]
-    else:
-        hyp_experts = list(np.linspace(0.0, 0.3, K))
+#    if want_random:
+#        hyp_experts = [random.uniform(0.0, 0.3) for itr in range(K)]  # classification surface is given by threhold rej_expert[i]+hyp_expert[i]
+#    else:
+#        hyp_experts = list(np.linspace(0.0, 0.3, K))
+#    experts = zip(rej_experts, hyp_experts) #expert format is list of tuple [(rej_threshold1, hyp_threshold1),(rej_threshold2, hyp_threshold2).... ]    
+
+    hyp_experts=list(np.linspace(-2.0, 0.0, K/5.0))  #experts are of the form w*x_1+0.05-x_2=0 so we just specify w
+    rej_experts=list(np.linspace(0.0, 0.5, 5))  #5 confidence based thresholds for each w
+    experts=[]
+    for hyp in hyp_experts:
+        for rej in rej_experts:
+            experts.append([hyp,rej])
 
 
-    experts = zip(rej_experts, hyp_experts) #expert format is list of tuple [(rej_threshold1, hyp_threshold1),(rej_threshold2, hyp_threshold2).... ]    
     # fexperts=[]
     # rej_experts = [random.uniform(0.0, 1.0) for itr in range(K-1)] # reject if rej_experts[i] < data, 
     # # multiple hypotehsis for each rejecting expert
@@ -46,10 +53,10 @@ def create_experts(K, want_random):
 def create_data(T):
  
     #creating data according to gaussian and labels
-    x_data = [random.gauss(0.6, 0.1) for itr in range(T)]
-    y_labels = [ int(itr >= 0.6)  for itr in x_data]
-#    x_data = [random.uniform(0, 1) for itr in range(T)]
-#    y_labels = [ int(itr >= 0.5)  for itr in x_data]
+#    x_data = [random.gauss(0.6, 0.1) for itr in range(T)]
+#    y_labels = [ int(itr >= 0.6)  for itr in x_data]
+    x_data = [[random.uniform(0.0, 1.0),random.uniform(0.0,1.0)] for itr in range(T)]
+    y_labels = [ int(-itr[0]+0.5 <= itr[1])  for itr in x_data] #label +1 above -x+0.5
 
     data = zip(x_data, y_labels)  #data format is list of tuple [(x1,y1),(x2,y2)....]
     return data
@@ -91,18 +98,21 @@ def rej_loss(true_label, expert_label, c):
                      
 
 def exp_hyp_label(data, expert):
-    if expert[0] + expert[1] <= data:
+    if expert[0]*data[0] +0.5 - data[1] <0:
         expert_label = 1
     else:
         expert_label = 0
     return expert_label
 
 def exp_label(data, expert):
-    if expert[0] < data:
+    if  dist_to_plane(data,expert) >= expert[1] : # this is when you accept. if distance to plane is higher than threhsodl
         expert_label = exp_hyp_label(data, expert)
     else:
        expert_label = -1
     return expert_label
+
+def dist_to_plane(data,expert):
+    return math.fabs(expert[0]*data[0]-data[1]+0.5)/math.sqrt(expert[0]**2+1+0.5**2)
 
 
 ############# ############# ############# ############# ALGORITHMS ############# ############# ############# ############# ############# ############# 
@@ -538,32 +548,32 @@ def ucbvt(c, alpha, experts, dat,return_rounds):
 def plotting(c,alpha,K,text_file):
 #NEED TO IMRPOVE THIS PLOTTING FUNCTION BC IT SUCKS
 
-    NUM_AVG=2
-    T_MAX=1000
+    NUM_AVG=5
+    T_MAX=5000
     avg_regret=[]
     avg_counts=[]
     avg_losses=[]
     for er in range(NUM_AVG):
             experts= create_experts(K, False)
             
-            x=range(200,T_MAX,1000) 
+            x=range(200,T_MAX,500) 
 
             loss=[]
             count=[]
             expert_loss=[]
 
-            for p in range(1):
+            for p in range(20):
                 data=create_data(T_MAX)
                 loss_experts=loss_of_every_expert(data,experts,c,x) 
                 loss1,countrej1=ucbcc(c,alpha,experts,data,x) #returns values of all needed roudns
                 loss2,countrej2=ucbn(c,alpha,experts,data,x)
                 loss3,countrej3=ucbh(c,alpha,experts,data,x)
                 loss4,countrej4=ucbd(c,alpha,experts,data,x)
-                loss5,countrej5=ucbt(c,alpha,experts,data,x)
+#                loss5,countrej5=ucbt(c,alpha,experts,data,x)
                 #loss6,countrej6=ucbvt(c,alpha,experts,data,x)
                 expert_loss.append(loss_experts)
-                loss.append([loss1,loss2,loss3,loss4,loss5])  #,loss6])
-                count.append([countrej1,countrej2,countrej3,countrej4,countrej5])  #,countrej6])
+                loss.append([loss1,loss2,loss3,loss4])#,loss5,loss6])
+                count.append([countrej1,countrej2,countrej3,countrej4])#,countrej5,countrej6])
             loss=np.mean(np.array(loss),axis=0)
             count=np.mean(np.array(count),axis=0)
             expert_loss=np.mean(np.array(expert_loss),axis=0)
@@ -589,21 +599,21 @@ def plotting(c,alpha,K,text_file):
     text_file.write('; regret UCBN:'+str(avg_regret[1])+'; std UCBN:'+str(std_regret[1]))
     text_file.write('; regret UCBH:'+str(avg_regret[2])+'; std UCBH:'+str(std_regret[2]))
     text_file.write('; regret UCBD:'+str(avg_regret[3])+'; std UCBD:'+str(std_regret[3]))
-    text_file.write('; regret UCBT:'+str(avg_regret[4])+'; std UCBT:'+str(std_regret[4]))
+#    text_file.write('; regret UCBT:'+str(avg_regret[4])+'; std UCBT:'+str(std_regret[4]))
 #    text_file.write('; regret UCBVT:'+str(avg_regret[5])+'; std UCBVT:'+str(std_regret[5]))
 
     text_file.write('; losses UCBC:'+str(avg_losses[0])+'; std UCB:'+str(std_losses[0]))
     text_file.write('; losses UCBN:'+str(avg_losses[1])+'; std UCBN:'+str(std_losses[1]))
     text_file.write('; losses UCBH:'+str(avg_losses[2])+'; std UCBH:'+str(std_losses[2]))
     text_file.write('; losses UCBD:'+str(avg_losses[3])+'; std UCBD:'+str(std_losses[3]))
-    text_file.write('; losses UCBT:'+str(avg_losses[4])+'; std UCBT:'+str(std_losses[4]))
+#    text_file.write('; losses UCBT:'+str(avg_losses[4])+'; std UCBT:'+str(std_losses[4]))
 #    text_file.write('; losses UCBVT:'+str(avg_losses[5])+'; std UCBVT:'+str(std_losses[5]))
 
     text_file.write('; counts UCBC:'+str(avg_counts[0])+'; std UCB:'+str(std_counts[0]))
     text_file.write('; counts UCBN:'+str(avg_counts[1])+'; std UCBN:'+str(std_counts[1]))
     text_file.write('; counts UCBH:'+str(avg_counts[2])+'; std UCBH:'+str(std_counts[2]))
     text_file.write('; counts UCBD:'+str(avg_counts[3])+'; std UCBD:'+str(std_counts[3]))
-    text_file.write('; counts UCBT:'+str(avg_counts[4])+'; std UCBT:'+str(std_counts[4]))
+#    text_file.write('; counts UCBT:'+str(avg_counts[4])+'; std UCBT:'+str(std_counts[4]))
 #    text_file.write('; counts UCBVT:'+str(avg_counts[5])+'; std UCBVT:'+str(std_counts[5]))
 
 
@@ -613,7 +623,7 @@ def plotting(c,alpha,K,text_file):
     ax.errorbar(x, avg_regret[1], yerr=std_regret[1],fmt='k-', label='UCB-N')
     ax.errorbar(x, avg_regret[2], yerr=std_regret[2],fmt='b-', label='UCB-H')
     ax.errorbar(x, avg_regret[3], yerr=std_regret[3],fmt='g-', label='UCB-D')
-    ax.errorbar(x, avg_regret[4], yerr=std_regret[4],fmt='c-', label='UCB-T')
+#    ax.errorbar(x, avg_regret[4], yerr=std_regret[4],fmt='c-', label='UCB-T')
 #    ax.errorbar(x, avg_regret[5], yerr=std_regret[5],fmt='y-', label='UCB-VT')
     ax.axhline(y=0.0,c="magenta",linewidth=2,zorder=10)
     legend = ax.legend(loc='upper right', shadow=True)
@@ -627,7 +637,7 @@ def plotting(c,alpha,K,text_file):
     ax.errorbar(x, avg_losses[1], yerr=std_losses[1],fmt='k-', label='UCB-N')
     ax.errorbar(x, avg_losses[2], yerr=std_losses[2],fmt='b-', label='UCB-H')
     ax.errorbar(x, avg_losses[3], yerr=std_losses[3],fmt='g-', label='UCB-D')
-    ax.errorbar(x, avg_losses[4], yerr=std_losses[4],fmt='c-', label='UCB-T')
+#    ax.errorbar(x, avg_losses[4], yerr=std_losses[4],fmt='c-', label='UCB-T')
 #    ax.errorbar(x, avg_losses[5], yerr=std_losses[5],fmt='y-', label='UCB-VT')
     ax.axhline(y=0.0,c="magenta",linewidth=2,zorder=10)
     legend = ax.legend(loc='upper right', shadow=True)
@@ -641,7 +651,7 @@ def plotting(c,alpha,K,text_file):
     ax.errorbar(x, avg_counts[1], yerr=std_counts[1],fmt='k-', label='UCB-N')
     ax.errorbar(x, avg_counts[2], yerr=std_counts[2],fmt='b-', label='UCB-H')
     ax.errorbar(x, avg_counts[3], yerr=std_counts[3],fmt='g-', label='UCB-D')
-    ax.errorbar(x, avg_counts[4], yerr=std_counts[4],fmt='c-', label='UCB-T')
+#    ax.errorbar(x, avg_counts[4], yerr=std_counts[4],fmt='c-', label='UCB-T')
 #    ax.errorbar(x, avg_counts[5], yerr=std_counts[5],fmt='y-', label='UCB-VT')
     legend = ax.legend(loc='upper right', shadow=True)
     plt.xlabel('Rounds')
