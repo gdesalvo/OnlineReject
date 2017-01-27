@@ -73,7 +73,7 @@ def loss_of_every_expert(dat, experts, c,return_rounds):
                 loss_expert[i] += rej_loss(dat[t][1], exp_label(dat[t][0], experts[i]), c)
             
 
-        if enum_return_rounds < len(return_rounds) and t==return_rounds[enum_return_rounds]:
+        if enum_return_rounds < len(return_rounds) and (t+1)==return_rounds[enum_return_rounds]:
             loss_expert_at_rounds.append([ix / float(t+1) for ix in loss_expert] )
             enum_return_rounds+=1
 
@@ -182,7 +182,7 @@ def ucbn(c, alpha, experts, dat, return_rounds):
                 inv_pull = 1.0 / expert_pulls[i]
                 current_loss = rej_loss(dat[t][1], exp_label(dat[t][0], experts[i]), c) 
                 expert_avg[i] = current_loss * inv_pull + (1 - inv_pull) * expert_avg[i]
-        if enum_return_rounds < len(return_rounds) and t==return_rounds[enum_return_rounds]:
+        if enum_return_rounds < len(return_rounds) and (t+1)==return_rounds[enum_return_rounds]:
             loss_alg_at_return_rounds.append(loss_alg/float(t+1))
             count_rej_at_return_rounds.append(count_rej/float(t+1))
             enum_return_rounds+=1
@@ -238,7 +238,7 @@ def ucbcc(c, alpha, experts, dat,return_rounds):
                 current_label = exp_hyp_label(dat[t][0], experts[i])
                 current_loss = rej_loss(dat[t][1], current_label, c)
                 expert_hyp_losses[i] += current_loss 
-        if enum_return_rounds < len(return_rounds) and t==return_rounds[enum_return_rounds]:
+        if enum_return_rounds < len(return_rounds) and (t+1)==return_rounds[enum_return_rounds]:
             loss_alg_at_return_rounds.append(loss_alg/float(t + 1))
             count_rej_at_return_rounds.append(count_rej/float(t + 1))
             enum_return_rounds+=1
@@ -290,7 +290,7 @@ def ucbd(c, alpha, experts, dat,return_rounds):
                 current_label = exp_hyp_label(dat[t][0], experts[i])
                 current_loss = rej_loss(dat[t][1], current_label, c)
                 expert_hyp_losses[i] += current_loss 
-        if enum_return_rounds < len(return_rounds) and t==return_rounds[enum_return_rounds]:
+        if enum_return_rounds < len(return_rounds) and (t+1)==return_rounds[enum_return_rounds]:
             loss_alg_at_return_rounds.append(loss_alg/float(t+1))
             count_rej_at_return_rounds.append(count_rej/float(t+1))
             enum_return_rounds+=1
@@ -357,7 +357,7 @@ def ucbh(c, alpha, experts, dat,return_rounds):
                             expert_pulls[jj] += 1
                             hyp_expert_avg[jj] = rej_loss(dat[t][1], save_expert_labels[jj], c)
 
-        if enum_return_rounds < len(return_rounds) and t==return_rounds[enum_return_rounds]:
+        if enum_return_rounds < len(return_rounds) and (t+1)==return_rounds[enum_return_rounds]:
             loss_alg_at_return_rounds.append(loss_alg/float(t+1))
             count_rej_at_return_rounds.append(count_rej/float(t+1))
             enum_return_rounds+=1
@@ -437,7 +437,7 @@ def ucbt(c, alpha, experts, dat,return_rounds):
                             expert_pulls[jj] += 1
                             hyp_expert_avg[jj] = rej_loss(dat[t][1], save_expert_labels[jj], c)
 
-        if enum_return_rounds < len(return_rounds) and t==return_rounds[enum_return_rounds]:
+        if enum_return_rounds < len(return_rounds) and (t+1)==return_rounds[enum_return_rounds]:
             loss_alg_at_return_rounds.append(loss_alg/float(t+1))
             count_rej_at_return_rounds.append(count_rej/float(t+1))
             enum_return_rounds+=1
@@ -521,7 +521,7 @@ def ucbvt(c, alpha, experts, dat,return_rounds):
 
         # loss_alg_at_return_rounds.append(loss_alg / float(T))    
         # count_rej_at_return_rounds.append(count_rej / float(T))    
-        if enum_return_rounds < len(return_rounds) and t==return_rounds[enum_return_rounds]:
+        if enum_return_rounds < len(return_rounds) and (t+1)==return_rounds[enum_return_rounds]:
             loss_alg_at_return_rounds.append(loss_alg/float(t+1))
             count_rej_at_return_rounds.append(count_rej/float(t+1))
             enum_return_rounds+=1
