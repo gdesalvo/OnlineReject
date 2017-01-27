@@ -74,7 +74,7 @@ def loss_of_every_expert(dat, experts, c,return_rounds):
             
 
         if enum_return_rounds < len(return_rounds) and t==return_rounds[enum_return_rounds]:
-            loss_expert_at_rounds.append([ix / float(t) for ix in loss_expert] )
+            loss_expert_at_rounds.append([ix / float(t+1) for ix in loss_expert] )
             enum_return_rounds+=1
 
     return loss_expert_at_rounds
@@ -183,8 +183,8 @@ def ucbn(c, alpha, experts, dat, return_rounds):
                 current_loss = rej_loss(dat[t][1], exp_label(dat[t][0], experts[i]), c) 
                 expert_avg[i] = current_loss * inv_pull + (1 - inv_pull) * expert_avg[i]
         if enum_return_rounds < len(return_rounds) and t==return_rounds[enum_return_rounds]:
-            loss_alg_at_return_rounds.append(loss_alg/float(t))
-            count_rej_at_return_rounds.append(count_rej/float(t))
+            loss_alg_at_return_rounds.append(loss_alg/float(t+1))
+            count_rej_at_return_rounds.append(count_rej/float(t+1))
             enum_return_rounds+=1
     return loss_alg_at_return_rounds,count_rej_at_return_rounds
 
@@ -239,8 +239,8 @@ def ucbcc(c, alpha, experts, dat,return_rounds):
                 current_loss = rej_loss(dat[t][1], current_label, c)
                 expert_hyp_losses[i] += current_loss 
         if enum_return_rounds < len(return_rounds) and t==return_rounds[enum_return_rounds]:
-            loss_alg_at_return_rounds.append(loss_alg/float(t))
-            count_rej_at_return_rounds.append(count_rej/float(t))
+            loss_alg_at_return_rounds.append(loss_alg/float(t + 1))
+            count_rej_at_return_rounds.append(count_rej/float(t + 1))
             enum_return_rounds+=1
     return loss_alg_at_return_rounds,count_rej_at_return_rounds
 
@@ -291,8 +291,8 @@ def ucbd(c, alpha, experts, dat,return_rounds):
                 current_loss = rej_loss(dat[t][1], current_label, c)
                 expert_hyp_losses[i] += current_loss 
         if enum_return_rounds < len(return_rounds) and t==return_rounds[enum_return_rounds]:
-            loss_alg_at_return_rounds.append(loss_alg/float(t))
-            count_rej_at_return_rounds.append(count_rej/float(t))
+            loss_alg_at_return_rounds.append(loss_alg/float(t+1))
+            count_rej_at_return_rounds.append(count_rej/float(t+1))
             enum_return_rounds+=1
     return loss_alg_at_return_rounds,count_rej_at_return_rounds
        
@@ -358,8 +358,8 @@ def ucbh(c, alpha, experts, dat,return_rounds):
                             hyp_expert_avg[jj] = rej_loss(dat[t][1], save_expert_labels[jj], c)
 
         if enum_return_rounds < len(return_rounds) and t==return_rounds[enum_return_rounds]:
-            loss_alg_at_return_rounds.append(loss_alg/float(t))
-            count_rej_at_return_rounds.append(count_rej/float(t))
+            loss_alg_at_return_rounds.append(loss_alg/float(t+1))
+            count_rej_at_return_rounds.append(count_rej/float(t+1))
             enum_return_rounds+=1
     return loss_alg_at_return_rounds,count_rej_at_return_rounds
 
@@ -438,8 +438,8 @@ def ucbt(c, alpha, experts, dat,return_rounds):
                             hyp_expert_avg[jj] = rej_loss(dat[t][1], save_expert_labels[jj], c)
 
         if enum_return_rounds < len(return_rounds) and t==return_rounds[enum_return_rounds]:
-            loss_alg_at_return_rounds.append(loss_alg/float(t))
-            count_rej_at_return_rounds.append(count_rej/float(t))
+            loss_alg_at_return_rounds.append(loss_alg/float(t+1))
+            count_rej_at_return_rounds.append(count_rej/float(t+1))
             enum_return_rounds+=1
     return loss_alg_at_return_rounds,count_rej_at_return_rounds
 
@@ -519,10 +519,12 @@ def ucbvt(c, alpha, experts, dat,return_rounds):
                                 expert_pulls[jj] += 1
                                 hyp_expert_avg[jj] = rej_loss(dat[t][1], save_expert_labels[jj], c)
 
-
-
-        loss_alg_at_return_rounds.append(loss_alg / float(T))    
-        count_rej_at_return_rounds.append(count_rej / float(T))    
+        # loss_alg_at_return_rounds.append(loss_alg / float(T))    
+        # count_rej_at_return_rounds.append(count_rej / float(T))    
+        if enum_return_rounds < len(return_rounds) and t==return_rounds[enum_return_rounds]:
+            loss_alg_at_return_rounds.append(loss_alg/float(t+1))
+            count_rej_at_return_rounds.append(count_rej/float(t+1))
+            enum_return_rounds+=1
 
     return loss_alg_at_return_rounds,count_rej_at_return_rounds
 
@@ -560,10 +562,8 @@ def plotting(c,alpha,K,text_file):
                 loss5,countrej5=ucbt(c,alpha,experts,data,x)
                 #loss6,countrej6=ucbvt(c,alpha,experts,data,x)
                 expert_loss.append(loss_experts)
-                loss.append([loss1,loss2,loss3,loss4,loss5])#,loss6])
-                count.append([countrej1,countrej2,countrej3,countrej4,countrej5])#,countrej6])
-            
-
+                loss.append([loss1,loss2,loss3,loss4,loss5])  #,loss6])
+                count.append([countrej1,countrej2,countrej3,countrej4,countrej5])  #,countrej6])
             loss=np.mean(np.array(loss),axis=0)
             count=np.mean(np.array(count),axis=0)
             expert_loss=np.mean(np.array(expert_loss),axis=0)
@@ -575,9 +575,10 @@ def plotting(c,alpha,K,text_file):
 
     std_regret=np.std(np.array(avg_regret),axis=0)
     avg_regret=np.mean(np.array(avg_regret),axis=0)
-
+    
     std_losses=np.std(np.array(avg_losses),axis=0)
     avg_losses=np.mean(np.array(avg_losses),axis=0)
+    
     std_counts=np.std(np.array(avg_counts),axis=0)
     avg_counts=np.mean(np.array(avg_counts),axis=0)
 
