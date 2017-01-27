@@ -22,13 +22,16 @@ def create_experts(K, want_random):
 #        hyp_experts = list(np.linspace(0.0, 0.3, K))
 #    experts = zip(rej_experts, hyp_experts) #expert format is list of tuple [(rej_threshold1, hyp_threshold1),(rej_threshold2, hyp_threshold2).... ]    
 
-    hyp_experts=list(np.linspace(-2.0, 0.0, K/5.0))  #experts are of the form w*x_1+0.05-x_2=0 so we just specify w
-    rej_experts=list(np.linspace(0.0, 0.5, 5))  #5 confidence based thresholds for each w
-    experts=[]
-    for hyp in hyp_experts:
-        for rej in rej_experts:
-            experts.append([hyp,rej])
+    # hyp_experts=list(np.linspace(-2.0, 0.0, K/5.0))  #experts are of the form w*x_1+0.05-x_2=0 so we just specify w
+    # rej_experts=list(np.linspace(0.0, 0.5, 5))  #5 confidence based thresholds for each w
+    # experts=[]
+    # for hyp in hyp_experts:
+    #     for rej in rej_experts:
+    #         experts.append([hyp,rej])
 
+    hyp_experts = list(np.linspace(0.0, np.pi, K / 5.0))
+    rej_experts = list(np.linspace(0.0, 0.5, 5))
+    experts = zip(hyp_experts, rej_experts)
 
     # fexperts=[]
     # rej_experts = [random.uniform(0.0, 1.0) for itr in range(K-1)] # reject if rej_experts[i] < data, 
@@ -55,8 +58,12 @@ def create_data(T):
     #creating data according to gaussian and labels
 #    x_data = [random.gauss(0.6, 0.1) for itr in range(T)]
 #    y_labels = [ int(itr >= 0.6)  for itr in x_data]
-    x_data = [[random.uniform(0.0, 1.0),random.uniform(0.0,1.0)] for itr in range(T)]
-    y_labels = [ int(-itr[0]+0.5 <= itr[1])  for itr in x_data] #label +1 above -x+0.5
+    # x_data = [[random.uniform(0.0, 1.0),random.uniform(0.0,1.0)] for itr in range(T)]
+    # y_labels = [ int(-itr[0]+0.5 <= itr[1])  for itr in x_data] #label +1 above -x+0.5
+
+    x_data = [[random.uniform(-1.0, 1.0),random.uniform(-1.0,1.0)] for itr in range(T)]
+    y_labels = [ int(itr[0] + itr[1] > 0)  for itr in x_data] #label +1 if w_1 x_1 + w_2 x_2 > 0
+ 
 
     data = zip(x_data, y_labels)  #data format is list of tuple [(x1,y1),(x2,y2)....]
     return data
@@ -98,10 +105,17 @@ def rej_loss(true_label, expert_label, c):
                      
 
 def exp_hyp_label(data, expert):
-    if expert[0]*data[0] +0.5 - data[1] <0:
+    # if expert[0]*data[0] +0.5 - data[1] <0:
+    #     expert_label = 1
+    # else:
+    #     expert_label = 0
+
+    if np.cos(expert[0]) * data[0] + np.sin(expert[0]) * data[1] > 0:
         expert_label = 1
     else:
         expert_label = 0
+
+
     return expert_label
 
 def exp_label(data, expert):
@@ -112,7 +126,8 @@ def exp_label(data, expert):
     return expert_label
 
 def dist_to_plane(data,expert):
-    return math.fabs(expert[0]*data[0]-data[1]+0.5)/math.sqrt(expert[0]**2+1+0.5**2)
+    # return math.fabs(expert[0]*data[0]-data[1]+0.5)/math.sqrt(expert[0]**2+1+0.5**2)
+    return math.fabs(np.cos(expert[0]) * data[0] + np.sin(expert[0]) * data[1])/math.sqrt(np.cos(expert[0])**2+np.sin(expert[0])**2)
 
 
 ############# ############# ############# ############# ALGORITHMS ############# ############# ############# ############# ############# ############# 
