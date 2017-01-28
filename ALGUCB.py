@@ -12,18 +12,15 @@ random.seed(3428)
 def create_experts(K, want_random,one_d):
 
     if one_d:
-    # #creating the rejecting and hypothesis experts according to threholds
+         experts=[]
          if want_random:
-             rej_experts = [random.uniform(0.0, 1.0) for itr in range(K)] # reject if rej_experts[i] < data, 
+             for itr in range(K):
+                 t1=random.uniform(-1.0,1.0)
+                 t2=random.uniform(-1.0,1.0)
+                 experts.append([min(t1,t2),max(t1,t2),random.randint(0,5)]) #last number is the stump type
          else:
-             rej_experts = list(np.linspace(0.0, 1.0, K))
-
-
-         if want_random:
-             hyp_experts = [random.uniform(0.0, 0.3) for itr in range(K)]  # classification surface is given by threhold rej_expert[i]+hyp_expert[i]
-         else:
-             hyp_experts = list(np.linspace(0.0, 0.3, K))
-         experts=zip(rej_experts,hyp_experts)
+             for itr in np.linspace(-1.0, 1.0, K):
+                 experts.append([itr,itr+2.0/K,random.randint(0,5)])  #last number is the stump type
     else:
         hyp_experts = list(np.linspace(0.0, np.pi, K / 5.0))
         rej_experts = list(np.linspace(0.0, 0.5, 5))
@@ -126,10 +123,29 @@ def rej_loss(true_label, expert_label, c):
 
 def exp_hyp_label(data, expert,one_d):
     if one_d:
-        if expert[0] + expert[1] <= data:
-            expert_label = 1
+        if expert[2]==0 or expert[2]==4:
+            if expert[1] <= data: 
+                expert_label = 1
+            else:
+                expert_label = 0
+        elif expert[2]==1:
+            if expert[1] >= data:
+                expert_label = 1
+            else:
+                expert_label = 0
+        elif expert[2]==2:
+            if expert[0] <= data:
+                expert_label = 1
+            else:
+                expert_label = 0
+        elif expert[2]==3  or expert[2]==5:
+            if expert[0] >= data:
+                expert_label = 1
+            else:
+                expert_label = 0
         else:
-            expert_label = 0
+            print 'incorrect stump type'
+
     else: 
         if np.cos(expert[0]) * data[0] + np.sin(expert[0]) * data[1] > 0:
             expert_label = 1
@@ -140,10 +156,24 @@ def exp_hyp_label(data, expert,one_d):
 
 def exp_label(data, expert,one_d):
     if one_d:
-        if expert[0] < data:
-            expert_label = exp_hyp_label(data, expert,one_d)
+        if expert[2]==0 or expert[2]==1: #R|0|1 and R|1|0
+            if expert[0] < data:
+                expert_label = exp_hyp_label(data, expert,one_d)
+            else:
+               expert_label = -1
+        elif expert[2]==2 or expert[2]==3: #0|1|R and 1|0|R 
+            if expert[1] > data:
+                expert_label = exp_hyp_label(data, expert,one_d)
+            else:
+               expert_label = -1
+        elif expert[2]==4 or expert[2]==5:  #0|R|1 and 1|R|0
+            if expert[0]< data < expert[1]:
+                expert_label = -1
+            else:
+                expert_label = exp_hyp_label(data, expert,one_d)
+
         else:
-           expert_label = -1
+                print 'incorrect stump type'
 
     else:
         if  dist_to_plane(data,expert) >= expert[1] : # this is when you accept. if distance to plane is higher than threhsodl
@@ -608,8 +638,8 @@ def plotting(c,alpha,K,text_file):
 #NEED TO IMRPOVE THIS PLOTTING FUNCTION BC IT SUCKS
     ONE_D=True   #one_d determines if you want to use 1d experts (True) vs 2d experts (False) 
     TYPE_DATA=2  #type_data determines if you want (0) 1d data drawn from gaussian(0.6,0.3), (1) 2d data drawn uniformly on [-1,1]X[-1,1] square, (2) loads 1d cifar data set
-    NUM_AVG=5
-    T_MAX=5000
+    NUM_AVG=2
+    T_MAX=500
     avg_regret=[]
     avg_counts=[]
     avg_losses=[]
@@ -622,7 +652,7 @@ def plotting(c,alpha,K,text_file):
             count=[]
             expert_loss=[]
 
-            for p in range(20):
+            for p in range(2):
                 data=create_data(T_MAX,TYPE_DATA)
                 loss_experts=loss_of_every_expert(data,experts,c,x,ONE_D)                
                 loss1,countrej1=ucbcc(c,alpha,experts,data,x,ONE_D) #returns values of all needed roudns
