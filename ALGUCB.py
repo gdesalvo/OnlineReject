@@ -607,22 +607,22 @@ def ucbvt(c, alpha, experts, dat,return_rounds, one_d):
 def plotting(c,alpha,K,text_file):
 #NEED TO IMRPOVE THIS PLOTTING FUNCTION BC IT SUCKS
     ONE_D=True   #one_d determines if you want to use 1d experts (True) vs 2d experts (False) 
-    TYPE_DATA=2  #type_data determines if you want (1) 1d data drawn from gaussian(0.6,0.3), (2) 2d data drawn uniformly on [-1,1]X[-1,1] square, (3) loads 1d cifar data set
-    NUM_AVG=2
-    T_MAX=50
+    TYPE_DATA=2  #type_data determines if you want (0) 1d data drawn from gaussian(0.6,0.3), (1) 2d data drawn uniformly on [-1,1]X[-1,1] square, (2) loads 1d cifar data set
+    NUM_AVG=5
+    T_MAX=5000
     avg_regret=[]
     avg_counts=[]
     avg_losses=[]
     for er in range(NUM_AVG):
-            experts= create_experts(K, False,ONE_D)
+            experts= create_experts(K, False, ONE_D)
             
-            x=[50] #range(200,T_MAX,500) 
+            x=range(200,T_MAX,500) 
 
             loss=[]
             count=[]
             expert_loss=[]
 
-            for p in range(2):
+            for p in range(20):
                 data=create_data(T_MAX,TYPE_DATA)
                 loss_experts=loss_of_every_expert(data,experts,c,x,ONE_D)                
                 loss1,countrej1=ucbcc(c,alpha,experts,data,x,ONE_D) #returns values of all needed roudns
@@ -736,7 +736,7 @@ def toc():
         print "Toc: start time not set"
 ############# ############# ############# ############# #############  MAIN ############# ############# ############# ############# ############# 
 if __name__ == "__main__":
-
+    tic()
     alpha=3
     val=int(sys.argv[1])
     K_values=[100,50,20]
@@ -757,3 +757,4 @@ if __name__ == "__main__":
     plotting(c,alpha,K,text_file) #last plot point is for T=2000                   
     text_file.close()
 
+    toc()
