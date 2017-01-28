@@ -72,6 +72,9 @@ def build_pca(data, components):
     return pca_data
 
 def pca_data(labels=[7,8]):
+    """
+    labels: list of int
+    """
     batches = range(1,6)
     fn_data_list = ["cifar-10-batches-py/data_batch_" + str(n_batch) for n_batch in batches]
     d = read_data(fn_data_list)
