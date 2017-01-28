@@ -8,30 +8,30 @@ import matplotlib.pyplot as plt
 random.seed(3428)
 #random.seed(1234)
 ############# ############# ############# ############# #############  HELPER FUNCTIONS ############# ############# ############# ############# ############# 
-def create_experts(K, want_random):
+def create_experts(K, want_random,one_d):
+
+    if one_d:
     # #creating the rejecting and hypothesis experts according to threholds
-    # if want_random:
-    #     rej_experts = [random.uniform(0.0, 1.0) for itr in range(K)] # reject if rej_experts[i] < data, 
-    # else:
-    #     rej_experts = list(np.linspace(0.0, 1.0, K))
+         if want_random:
+             rej_experts = [random.uniform(0.0, 1.0) for itr in range(K)] # reject if rej_experts[i] < data, 
+         else:
+             rej_experts = list(np.linspace(0.0, 1.0, K))
 
 
-    # if want_random:
-    #     hyp_experts = [random.uniform(0.0, 0.3) for itr in range(K)]  # classification surface is given by threhold rej_expert[i]+hyp_expert[i]
-    # else:
-    #     hyp_experts = list(np.linspace(0.0, 0.3, K))
+         if want_random:
+             hyp_experts = [random.uniform(0.0, 0.3) for itr in range(K)]  # classification surface is given by threhold rej_expert[i]+hyp_expert[i]
+         else:
+             hyp_experts = list(np.linspace(0.0, 0.3, K))
+         experts=zip(rej_experts,hyp_experts)
+    else:
+        hyp_experts = list(np.linspace(0.0, np.pi, K / 5.0))
+        rej_experts = list(np.linspace(0.0, 0.5, 5))
+        experts=[]
+        for hyp in hyp_experts:
+            for rej in rej_experts:
+                experts.append([hyp,rej])
 
 
-    #experts = zip(rej_experts, hyp_experts) #expert format is list of tuple [(rej_threshold1, hyp_thresHold1),(rej_threshold2, hyp_threshold2).... ]    
-
-    hyp_experts = list(np.linspace(0.0, np.pi, K / 5.0))
-    rej_experts = list(np.linspace(0.0, 0.5, 5))
-    experts=[]
-    for hyp in hyp_experts:
-        for rej in rej_experts:
-            experts.append([hyp,rej])
-
-#    experts = zip(hyp_experts, rej_experts)
 
 
 
@@ -55,16 +55,17 @@ def create_experts(K, want_random):
 
     return experts
 
-def create_data(T):
+def create_data(T,one_d):
  
     #creating data according to gaussian and labels
-#    x_data = [random.gauss(0.6, 0.3) for itr in range(T)]
-#    y_labels = [ int(itr >= 0.6)  for itr in x_data]
+    if one_d:
+        x_data = [random.gauss(0.6, 0.3) for itr in range(T)]
+        y_labels = [ int(itr >= 0.5)  for itr in x_data]
 #    x_data = [random.uniform(0, 1) for itr in range(T)]
-#    y_labels = [ int(itr >= 0.5)  for itr in x_data]
 
-    x_data = [[random.uniform(-1.0, 1.0),random.uniform(-1.0,1.0)] for itr in range(T)]
-    y_labels = [ int(itr[0] + itr[1] > 0)  for itr in x_data] #label +1 if w_1 x_1 + w_2 x_2 > 0
+    else:
+        x_data = [[random.uniform(-1.0, 1.0),random.uniform(-1.0,1.0)] for itr in range(T)]
+        y_labels = [ int(itr[0] + itr[1] > 0)  for itr in x_data] #label +1 if w_1 x_1 + w_2 x_2 > 0
  
 
     data = zip(x_data, y_labels)  #data format is list of tuple [(x1,y1),(x2,y2)....]
@@ -80,13 +81,13 @@ def lcb_bound(current_time, pull, alpha):
 def loss_of_best_expert(dat,experts,c):
     return min(loss_of_every_expert(dat, experts, c))
 
-def loss_of_every_expert(dat, experts, c,return_rounds):
+def loss_of_every_expert(dat, experts, c,return_rounds,one_d):
     loss_expert_at_rounds=[]
     enum_return_rounds=0
     loss_expert = [0] * len(experts)
     for t in range(len(dat)):
         for i in range(len(experts)):
-                loss_expert[i] += rej_loss(dat[t][1], exp_label(dat[t][0], experts[i]), c)
+                loss_expert[i] += rej_loss(dat[t][1], exp_label(dat[t][0], experts[i],one_d), c)
             
 
         if enum_return_rounds < len(return_rounds) and t+1 ==return_rounds[enum_return_rounds]:
@@ -106,24 +107,33 @@ def rej_loss(true_label, expert_label, c):
             return 1.0
                      
 
-def exp_hyp_label(data, expert):
-#    if expert[0] + expert[1] <= data:
-#        expert_label = 1
-#    else:
-#        expert_label = 0
-    if np.cos(expert[0]) * data[0] + np.sin(expert[0]) * data[1] > 0:
-        expert_label = 1
-    else:
-        expert_label = 0
+def exp_hyp_label(data, expert,one_d):
+    if one_d:
+        if expert[0] + expert[1] <= data:
+            expert_label = 1
+        else:
+            expert_label = 0
+    else: 
+        if np.cos(expert[0]) * data[0] + np.sin(expert[0]) * data[1] > 0:
+            expert_label = 1
+        else:
+            expert_label = 0
 
     return expert_label
 
-def exp_label(data, expert):
-    if  dist_to_plane(data,expert) >= expert[1] : # this is when you accept. if distance to plane is higher than threhsodl
-#    if expert[0] < data:
-        expert_label = exp_hyp_label(data, expert)
+def exp_label(data, expert,one_d):
+    if one_d:
+        if expert[0] < data:
+            expert_label = exp_hyp_label(data, expert,one_d)
+        else:
+           expert_label = -1
+
     else:
-       expert_label = -1
+        if  dist_to_plane(data,expert) >= expert[1] : # this is when you accept. if distance to plane is higher than threhsodl
+
+            expert_label = exp_hyp_label(data, expert,one_d)
+        else:
+           expert_label = -1
     return expert_label
 
 
@@ -172,7 +182,7 @@ def dist_to_plane(data,expert):
 #     return loss_alg / float(T) , count_rej/float(T)
 
 
-def ucbn(c, alpha, experts, dat, return_rounds):
+def ucbn(c, alpha, experts, dat, return_rounds, one_d):
 
     loss_alg_at_return_rounds=[]
     count_rej_at_return_rounds=[]
@@ -191,7 +201,7 @@ def ucbn(c, alpha, experts, dat, return_rounds):
         lcb_list=[max(expert_avg[i] - lcb_bound(t, expert_pulls[i], alpha), 0.0) for i in range(K)] #soinefficient
         best_arm = lcb_list.index(min(lcb_list)) 
         #update regret
-        expert_label = exp_label(dat[t][0], experts[best_arm])
+        expert_label = exp_label(dat[t][0], experts[best_arm],one_d)
         expert_loss = rej_loss(dat[t][1], expert_label, c) 
 
 #        print best_arm,expert_loss
@@ -201,7 +211,7 @@ def ucbn(c, alpha, experts, dat, return_rounds):
             count_rej+=1
             #update only rejecting experts since "never" receive true label
             for i in range(K): #soinefficient
-                if exp_label(dat[t][0], experts[i]) == -1:
+                if exp_label(dat[t][0], experts[i],one_d) == -1:
                     expert_pulls[i] += 1
                     inv_pull = 1.0 / expert_pulls[i]
                     expert_avg[i] = c * inv_pull + (1 - inv_pull) * expert_avg[i]
@@ -210,7 +220,7 @@ def ucbn(c, alpha, experts, dat, return_rounds):
             for i in range(K): 
                 expert_pulls[i] += 1
                 inv_pull = 1.0 / expert_pulls[i]
-                current_loss = rej_loss(dat[t][1], exp_label(dat[t][0], experts[i]), c) 
+                current_loss = rej_loss(dat[t][1], exp_label(dat[t][0], experts[i],one_d), c) 
                 expert_avg[i] = current_loss * inv_pull + (1 - inv_pull) * expert_avg[i]
         if enum_return_rounds < len(return_rounds) and t+1==return_rounds[enum_return_rounds]:
             loss_alg_at_return_rounds.append(loss_alg/float(t+1))
@@ -219,7 +229,7 @@ def ucbn(c, alpha, experts, dat, return_rounds):
     return loss_alg_at_return_rounds,count_rej_at_return_rounds
 
 
-def ucbcc(c, alpha, experts, dat,return_rounds):
+def ucbcc(c, alpha, experts, dat,return_rounds, one_d):
 
     loss_alg_at_return_rounds=[]
     count_rej_at_return_rounds=[]
@@ -241,13 +251,13 @@ def ucbcc(c, alpha, experts, dat,return_rounds):
         expert_lcbs = []
         # update slacks and empirical averages
         for i in range(K):
-            if exp_label(dat[t][0], experts[i]) != -1:  # expert i accepts
+            if exp_label(dat[t][0], experts[i],one_d) != -1:  # expert i accepts
                 expert_cnt_acc[i] += 1
 
         for i in range(K):
             exp_prob_acc = expert_cnt_acc[i] / (t+1)
             exp_prob_rej = 1 - exp_prob_acc
-            if exp_label(dat[t][0],experts[i])!=-1:
+            if exp_label(dat[t][0],experts[i],one_d)!=-1:
                 expert_lcbs.append(max(exp_prob_acc - lcb_bound(t+1, t+1, alpha),0.0) * max((expert_hyp_losses[i] / max(expert_pulls[i],1)) - lcb_bound(t+1, expert_pulls[i], alpha),0.0))
             else:
                 expert_lcbs.append(max(exp_prob_rej - lcb_bound(t+1, t+1, alpha), 0.0) * c) 
@@ -256,7 +266,7 @@ def ucbcc(c, alpha, experts, dat,return_rounds):
         best_arm = expert_lcbs.index(min(expert_lcbs)) 
         
         #update algorithm loss
-        expert_label = exp_label(dat[t][0], experts[best_arm])
+        expert_label = exp_label(dat[t][0], experts[best_arm],one_d)
         expert_loss = rej_loss(dat[t][1], expert_label, c) 
         if expert_label == -1:
             count_rej+=1
@@ -265,7 +275,7 @@ def ucbcc(c, alpha, experts, dat,return_rounds):
         if expert_label != -1:  # so that we see the label
             for i in range(K):
                 expert_pulls[i] += 1
-                current_label = exp_hyp_label(dat[t][0], experts[i])
+                current_label = exp_hyp_label(dat[t][0], experts[i],one_d)
                 current_loss = rej_loss(dat[t][1], current_label, c)
                 expert_hyp_losses[i] += current_loss 
         if enum_return_rounds < len(return_rounds) and t+1==return_rounds[enum_return_rounds]:
@@ -275,7 +285,7 @@ def ucbcc(c, alpha, experts, dat,return_rounds):
     return loss_alg_at_return_rounds,count_rej_at_return_rounds
 
 
-def ucbd(c, alpha, experts, dat,return_rounds):
+def ucbd(c, alpha, experts, dat,return_rounds, one_d):
     loss_alg_at_return_rounds=[]
     count_rej_at_return_rounds=[]
     enum_return_rounds=0
@@ -296,7 +306,7 @@ def ucbd(c, alpha, experts, dat,return_rounds):
         expert_lcbs = []
         # update slacks and empirical averages
         for i in range(K):
-            if exp_label(dat[t][0], experts[i]) != -1:  # expert i accepts
+            if exp_label(dat[t][0], experts[i],one_d) != -1:  # expert i accepts
                 expert_cnt_acc[i] += 1
 
         for i in range(K):
@@ -308,7 +318,7 @@ def ucbd(c, alpha, experts, dat,return_rounds):
         best_arm = expert_lcbs.index(min(expert_lcbs)) 
         
         #update algorithm loss
-        expert_label = exp_label(dat[t][0], experts[best_arm])
+        expert_label = exp_label(dat[t][0], experts[best_arm],one_d)
         expert_loss = rej_loss(dat[t][1], expert_label, c) 
         if expert_label == -1:
             count_rej+=1
@@ -317,7 +327,7 @@ def ucbd(c, alpha, experts, dat,return_rounds):
         if expert_label != -1:  # so that we see the label
             for i in range(K):
                 expert_pulls[i] += 1
-                current_label = exp_hyp_label(dat[t][0], experts[i])
+                current_label = exp_hyp_label(dat[t][0], experts[i],one_d)
                 current_loss = rej_loss(dat[t][1], current_label, c)
                 expert_hyp_losses[i] += current_loss 
         if enum_return_rounds < len(return_rounds) and t+1==return_rounds[enum_return_rounds]:
@@ -326,7 +336,7 @@ def ucbd(c, alpha, experts, dat,return_rounds):
             enum_return_rounds+=1
     return loss_alg_at_return_rounds,count_rej_at_return_rounds
        
-def ucbh(c, alpha, experts, dat,return_rounds):
+def ucbh(c, alpha, experts, dat,return_rounds,one_d):
     loss_alg_at_return_rounds=[]
     count_rej_at_return_rounds=[]
     enum_return_rounds=0
@@ -359,7 +369,7 @@ def ucbh(c, alpha, experts, dat,return_rounds):
         save_expert_labels=[]
         for i in range(K):
             #separate rejecting and accepting experts according to their label (not really kosher but essence the same)
-            expert_label = exp_label(dat[t][0], experts[i])
+            expert_label = exp_label(dat[t][0], experts[i],one_d)
             save_expert_labels.append(expert_label)
             if expert_label!=-1:
                 if str(i) in hyp_expert_avg.keys():
@@ -408,7 +418,7 @@ def ucbh(c, alpha, experts, dat,return_rounds):
     return loss_alg_at_return_rounds,count_rej_at_return_rounds
 
 
-def ucbt(c, alpha, experts, dat,return_rounds):
+def ucbt(c, alpha, experts, dat,return_rounds, one_d):
     loss_alg_at_return_rounds=[]
     count_rej_at_return_rounds=[]
     enum_return_rounds=0
@@ -430,7 +440,7 @@ def ucbt(c, alpha, experts, dat,return_rounds):
         save_expert_labels=[]
         for i in range(K):
             #separate rejecting and accepting experts according to their label (not really kosher but essence the same)
-            expert_label = exp_label(dat[t][0], experts[i])
+            expert_label = exp_label(dat[t][0], experts[i],one_d)
             save_expert_labels.append(expert_label)
             if expert_label!=-1:
                 if 1.0-(expert_pulls[i])/(t+1) <= gamma:  # fractin of times r rejected is less than gamma
@@ -489,7 +499,7 @@ def ucbt(c, alpha, experts, dat,return_rounds):
 
 
 
-def ucbvt(c, alpha, experts, dat,return_rounds):
+def ucbvt(c, alpha, experts, dat,return_rounds, one_d):
 
     # YOU CAN'T PARALLELIZE THIS IN T BECAUSE YOU T IN ALGORITHM
     loss_alg_at_return_rounds=[]
@@ -512,7 +522,7 @@ def ucbvt(c, alpha, experts, dat,return_rounds):
             save_expert_labels=[]
             for i in range(K):
                 #separate rejecting and accepting experts according to their label (not really kosher but essence the same)
-                expert_label = exp_label(dat[t][0], experts[i])
+                expert_label = exp_label(dat[t][0], experts[i],one_d)
                 save_expert_labels.append(expert_label)
                 if expert_label!=-1:
                     if 1.0-(expert_pulls[i])/(t+1) <= ( 1.0-1.0/float(T) ):  # fractin of times r rejected is less than gamma
@@ -579,14 +589,14 @@ def ucbvt(c, alpha, experts, dat,return_rounds):
 ############# ############# ############# ############# #############  PLOTTING ############# ############# ############# ############# ############# 
 def plotting(c,alpha,K,text_file):
 #NEED TO IMRPOVE THIS PLOTTING FUNCTION BC IT SUCKS
-
-    NUM_AVG=5
-    T_MAX=5000
+    ONE_D=True
+    NUM_AVG=2
+    T_MAX=500
     avg_regret=[]
     avg_counts=[]
     avg_losses=[]
     for er in range(NUM_AVG):
-            experts= create_experts(K, False)
+            experts= create_experts(K, False,ONE_D)
             
             x=range(200,T_MAX,500) 
 
@@ -594,14 +604,14 @@ def plotting(c,alpha,K,text_file):
             count=[]
             expert_loss=[]
 
-            for p in range(100):
-                data=create_data(T_MAX)
-                loss_experts=loss_of_every_expert(data,experts,c,x)                
-                loss1,countrej1=ucbcc(c,alpha,experts,data,x) #returns values of all needed roudns
-                loss2,countrej2=ucbn(c,alpha,experts,data,x)
-                loss3,countrej3=ucbh(c,alpha,experts,data,x)
-                loss4,countrej4=ucbd(c,alpha,experts,data,x)
-                loss5,countrej5=ucbt(c,alpha,experts,data,x)
+            for p in range(2):
+                data=create_data(T_MAX,ONE_D)
+                loss_experts=loss_of_every_expert(data,experts,c,x,ONE_D)                
+                loss1,countrej1=ucbcc(c,alpha,experts,data,x,ONE_D) #returns values of all needed roudns
+                loss2,countrej2=ucbn(c,alpha,experts,data,x,ONE_D)
+                loss3,countrej3=ucbh(c,alpha,experts,data,x,ONE_D)
+                loss4,countrej4=ucbd(c,alpha,experts,data,x,ONE_D)
+                loss5,countrej5=ucbt(c,alpha,experts,data,x,ONE_D)
                 #loss6,countrej6=ucbvt(c,alpha,experts,data,x)
                 expert_loss.append(loss_experts)
                 loss.append([loss1,loss2,loss3,loss4,loss5])#,loss6])
