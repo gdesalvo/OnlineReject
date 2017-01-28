@@ -26,7 +26,12 @@ def create_experts(K, want_random):
 
     hyp_experts = list(np.linspace(0.0, np.pi, K / 5.0))
     rej_experts = list(np.linspace(0.0, 0.5, 5))
-    experts = zip(hyp_experts, rej_experts)
+    experts=[]
+    for hyp in hyp_experts:
+        for rej in rej_experts:
+            experts.append([hyp,rej])
+
+#    experts = zip(hyp_experts, rej_experts)
 
 
 
@@ -576,7 +581,7 @@ def plotting(c,alpha,K,text_file):
 #NEED TO IMRPOVE THIS PLOTTING FUNCTION BC IT SUCKS
 
     NUM_AVG=5
-    T_MAX=2000
+    T_MAX=5000
     avg_regret=[]
     avg_counts=[]
     avg_losses=[]
@@ -589,7 +594,7 @@ def plotting(c,alpha,K,text_file):
             count=[]
             expert_loss=[]
 
-            for p in range(20):
+            for p in range(100):
                 data=create_data(T_MAX)
                 loss_experts=loss_of_every_expert(data,experts,c,x)                
                 loss1,countrej1=ucbcc(c,alpha,experts,data,x) #returns values of all needed roudns
@@ -606,7 +611,7 @@ def plotting(c,alpha,K,text_file):
             loss=np.mean(np.array(loss),axis=0)
             count=np.mean(np.array(count),axis=0)
             expert_loss=np.mean(np.array(expert_loss),axis=0)
-            print loss
+
 
             best_expert_loss=np.amin(expert_loss,axis=1)
             regret=loss-np.expand_dims(best_expert_loss,axis=0)
@@ -623,8 +628,7 @@ def plotting(c,alpha,K,text_file):
     avg_counts=np.mean(np.array(avg_counts),axis=0)
 
 
-    print avg_regret
-    print std_regret
+
     text_file.write('\nPseudo Regret of UCB-type Algorithms for '+str(K)+' arms with c '+str(c))
     text_file.write('; regret UCBC:'+str(avg_regret[0])+'; std UCB:'+str(std_regret[0]))
     text_file.write('; regret UCBN:'+str(avg_regret[1])+'; std UCBN:'+str(std_regret[1]))
@@ -704,7 +708,7 @@ def toc():
         print "Toc: start time not set"
 ############# ############# ############# ############# #############  MAIN ############# ############# ############# ############# ############# 
 if __name__ == "__main__":
-    tic()
+
     alpha=3
     val=int(sys.argv[1])
     K_values=[100,50,20]
@@ -724,4 +728,4 @@ if __name__ == "__main__":
     text_file = open("./Output_" + str(K) + "arms.txt", "w")
     plotting(c,alpha,K,text_file) #last plot point is for T=2000                   
     text_file.close()
-    toc()
+
