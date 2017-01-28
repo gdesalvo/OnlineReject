@@ -20,7 +20,12 @@ def create_experts(K, want_random,one_d):
                  experts.append([min(t1,t2),max(t1,t2),random.randint(0,5)]) #last number is the stump type
          else:
              for itr in np.linspace(-1.0, 1.0, K):
-                 experts.append([itr,itr+2.0/K,random.randint(0,5)])  #last number is the stump type
+                 experts.append([itr,itr+(1.0-itr)/2,0])
+                 experts.append([itr,itr+(1.0-itr)/2,1])
+                 experts.append([itr,itr+(1.0-itr)/2,2])
+                 experts.append([itr,itr+(1.0-itr)/2,3])
+                 experts.append([itr,itr+(1.0-itr)/2,4])
+                 experts.append([itr,itr+(1.0-itr)/2,5])
     else:
         hyp_experts = list(np.linspace(0.0, np.pi, K / 5.0))
         rej_experts = list(np.linspace(0.0, 0.5, 5))
