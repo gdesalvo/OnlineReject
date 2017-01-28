@@ -5,6 +5,7 @@ import matplotlib
 matplotlib.use('Agg')
 import numpy as np
 import matplotlib.pyplot as plt
+
 random.seed(3428)
 #random.seed(1234)
 ############# ############# ############# ############# #############  HELPER FUNCTIONS ############# ############# ############# ############# ############# 
@@ -55,20 +56,36 @@ def create_experts(K, want_random,one_d):
 
     return experts
 
-def create_data(T,one_d):
+def create_data(T,type_data):
  
     #creating data according to gaussian and labels
-    if one_d:
+    if type_data==0:
         x_data = [random.gauss(0.6, 0.3) for itr in range(T)]
         y_labels = [ int(itr >= 0.5)  for itr in x_data]
 #    x_data = [random.uniform(0, 1) for itr in range(T)]
-
-    else:
+        data = zip(x_data, y_labels)  #data format is list of tuple [(x1,y1),(x2,y2)....]
+    elif type_data==1:
         x_data = [[random.uniform(-1.0, 1.0),random.uniform(-1.0,1.0)] for itr in range(T)]
         y_labels = [ int(itr[0] + itr[1] > 0)  for itr in x_data] #label +1 if w_1 x_1 + w_2 x_2 > 0
- 
+        data = zip(x_data, y_labels)  #data format is list of tuple [(x1,y1),(x2,y2)....]
+    else:
+        #load data
+        cifar_data = np.genfromtxt('cifar10pca.txt', delimiter=',')
+        x_data_comp1=cifar_data[:,0] #first component
+        #scale data by max
+        x_data=x_data_comp1/float(np.amax(np.absolute(x_data_comp1)))
+        cifar_label = np.genfromtxt('cifar10labels.txt', delimiter=',')
+        y_labels=[]
+        for lab in cifar_label:
+            if int(lab)==7:
+                y_labels.append(0)
+            else:
+                y_labels.append(1)
+        data = zip(x_data, y_labels)  
+        np.random.shuffle(data) #shuffle data
+        data=data[:T]
 
-    data = zip(x_data, y_labels)  #data format is list of tuple [(x1,y1),(x2,y2)....]
+
     return data
 
 
@@ -589,23 +606,24 @@ def ucbvt(c, alpha, experts, dat,return_rounds, one_d):
 ############# ############# ############# ############# #############  PLOTTING ############# ############# ############# ############# ############# 
 def plotting(c,alpha,K,text_file):
 #NEED TO IMRPOVE THIS PLOTTING FUNCTION BC IT SUCKS
-    ONE_D=True
+    ONE_D=True   #one_d determines if you want to use 1d experts (True) vs 2d experts (False) 
+    TYPE_DATA=2  #type_data determines if you want (1) 1d data drawn from gaussian(0.6,0.3), (2) 2d data drawn uniformly on [-1,1]X[-1,1] square, (3) loads 1d cifar data set
     NUM_AVG=2
-    T_MAX=500
+    T_MAX=50
     avg_regret=[]
     avg_counts=[]
     avg_losses=[]
     for er in range(NUM_AVG):
             experts= create_experts(K, False,ONE_D)
             
-            x=range(200,T_MAX,500) 
+            x=[50] #range(200,T_MAX,500) 
 
             loss=[]
             count=[]
             expert_loss=[]
 
             for p in range(2):
-                data=create_data(T_MAX,ONE_D)
+                data=create_data(T_MAX,TYPE_DATA)
                 loss_experts=loss_of_every_expert(data,experts,c,x,ONE_D)                
                 loss1,countrej1=ucbcc(c,alpha,experts,data,x,ONE_D) #returns values of all needed roudns
                 loss2,countrej2=ucbn(c,alpha,experts,data,x,ONE_D)
