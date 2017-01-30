@@ -294,6 +294,50 @@ def ucbn(c, alpha, experts, dat, return_rounds, one_d):
             enum_return_rounds+=1
     return loss_alg_at_return_rounds,count_rej_at_return_rounds
 
+def ucbn_mod(c, alpha, experts, dat, return_rounds, one_d):
+
+    loss_alg_at_return_rounds=[]
+    count_rej_at_return_rounds=[]
+    enum_return_rounds=0
+    K = len(experts)
+    T = len(dat)
+#    print '\n\n UCB N'
+    expert_avg = [0.0]*K
+    expert_pulls = [0.0] * K 
+    loss_alg = 0
+    count_rej=0
+
+
+    for t in range(T):
+        #find best arm
+        lcb_list=[max(expert_avg[i] - lcb_bound(t, expert_pulls[i], alpha), 0.0) for i in range(K)] #soinefficient
+        best_arm = lcb_list.index(min(lcb_list)) 
+        #update regret
+        expert_label = exp_label(dat[t][0], experts[best_arm],one_d)
+        expert_loss = rej_loss(dat[t][1], expert_label, c) 
+
+#        print best_arm,expert_loss
+        loss_alg += expert_loss
+#        print str(dat[t][0])+","+str(best_arm)+","+ str(experts[best_arm])+",   " +str(expert_loss)+","+str(loss_alg) +","+ 'ucbN'
+        if expert_label == -1:
+            count_rej+=1
+            #update only rejecting experts since "never" receive true label
+            for i in range(K): #soinefficient
+                expert_pulls[i] += 1
+                inv_pull = 1.0 / expert_pulls[i]
+                expert_avg[i] = c * inv_pull + (1 - inv_pull) * expert_avg[i]
+        else:
+            #update all experts since received true label. 
+            for i in range(K): 
+                expert_pulls[i] += 1
+                inv_pull = 1.0 / expert_pulls[i]
+                current_loss = rej_loss(dat[t][1], exp_label(dat[t][0], experts[i],one_d), c) 
+                expert_avg[i] = current_loss * inv_pull + (1 - inv_pull) * expert_avg[i]
+        if enum_return_rounds < len(return_rounds) and t+1==return_rounds[enum_return_rounds]:
+            loss_alg_at_return_rounds.append(loss_alg/float(t+1))
+            count_rej_at_return_rounds.append(count_rej/float(t+1))
+            enum_return_rounds+=1
+    return loss_alg_at_return_rounds,count_rej_at_return_rounds
 
 def ucbcc(c, alpha, experts, dat,return_rounds, one_d):
 
@@ -484,7 +528,7 @@ def ucbh(c, alpha, experts, dat,return_rounds,one_d):
     return loss_alg_at_return_rounds,count_rej_at_return_rounds
 
 
-def ucbhn(c, alpha, experts, dat,return_rounds,one_d):
+def ucbh_mod(c, alpha, experts, dat,return_rounds,one_d):
     loss_alg_at_return_rounds=[]
     count_rej_at_return_rounds=[]
     enum_return_rounds=0
@@ -770,11 +814,11 @@ def plotting(c,alpha,K,text_file):
             for p in range(1):
                 data=create_data(T_MAX,TYPE_DATA)
                 loss_experts=loss_of_every_expert(data,experts,c,x,ONE_D)                
-                loss1,countrej1=ucbcc(c,alpha,experts,data,x,ONE_D) #returns values of all needed roudns
+                loss1,countrej1=ucbn_mod(c,alpha,experts,data,x,ONE_D) #returns values of all needed roudns
                 loss2,countrej2=ucbn(c,alpha,experts,data,x,ONE_D)
                 loss3,countrej3=ucbh(c,alpha,experts,data,x,ONE_D)
                 loss4,countrej4=ucbd(c,alpha,experts,data,x,ONE_D)
-                loss5,countrej5=ucbhn(c,alpha,experts,data,x,ONE_D)
+                loss5,countrej5=ucbh_mod(c,alpha,experts,data,x,ONE_D)
                 #loss6,countrej6=ucbvt(c,alpha,experts,data,x)
                 expert_loss.append(loss_experts)
                 loss.append([loss1,loss2,loss3,loss4,loss5])#,loss6])
@@ -803,35 +847,35 @@ def plotting(c,alpha,K,text_file):
 
 
     text_file.write('\nPseudo Regret of UCB-type Algorithms for '+str(K)+' arms with c '+str(c))
-    text_file.write('; regret UCBC:'+str(avg_regret[0])+'; std UCB:'+str(std_regret[0]))
+    text_file.write('; regret UCBN_MOD:'+str(avg_regret[0])+'; std UCBN_MOD:'+str(std_regret[0]))
     text_file.write('; regret UCBN:'+str(avg_regret[1])+'; std UCBN:'+str(std_regret[1]))
     text_file.write('; regret UCBH:'+str(avg_regret[2])+'; std UCBH:'+str(std_regret[2]))
     text_file.write('; regret UCBD:'+str(avg_regret[3])+'; std UCBD:'+str(std_regret[3]))
-    text_file.write('; regret UCBHN:'+str(avg_regret[4])+'; std UCBHN:'+str(std_regret[4]))
+    text_file.write('; regret UCBH_MOD:'+str(avg_regret[4])+'; std UCBH_MOD:'+str(std_regret[4]))
 #    text_file.write('; regret UCBVT:'+str(avg_regret[5])+'; std UCBVT:'+str(std_regret[5]))
 
-    text_file.write('; losses UCBC:'+str(avg_losses[0])+'; std UCB:'+str(std_losses[0]))
+    text_file.write('; losses UCBN_MOD:'+str(avg_losses[0])+'; std UCBN_MOD:'+str(std_losses[0]))
     text_file.write('; losses UCBN:'+str(avg_losses[1])+'; std UCBN:'+str(std_losses[1]))
     text_file.write('; losses UCBH:'+str(avg_losses[2])+'; std UCBH:'+str(std_losses[2]))
     text_file.write('; losses UCBD:'+str(avg_losses[3])+'; std UCBD:'+str(std_losses[3]))
-    text_file.write('; losses UCBT:'+str(avg_losses[4])+'; std UCBT:'+str(std_losses[4]))
+    text_file.write('; losses UCBH_MOD:'+str(avg_losses[4])+'; std UCBH_MOD:'+str(std_losses[4]))
 #    text_file.write('; losses UCBVT:'+str(avg_losses[5])+'; std UCBVT:'+str(std_losses[5]))
 
-    text_file.write('; counts UCBC:'+str(avg_counts[0])+'; std UCB:'+str(std_counts[0]))
+    text_file.write('; counts UCBN_MOD:'+str(avg_counts[0])+'; std UCBN_MOD:'+str(std_counts[0]))
     text_file.write('; counts UCBN:'+str(avg_counts[1])+'; std UCBN:'+str(std_counts[1]))
     text_file.write('; counts UCBH:'+str(avg_counts[2])+'; std UCBH:'+str(std_counts[2]))
     text_file.write('; counts UCBD:'+str(avg_counts[3])+'; std UCBD:'+str(std_counts[3]))
-    text_file.write('; counts UCBHN:'+str(avg_counts[4])+'; std UCBHN:'+str(std_counts[4]))
+    text_file.write('; counts UCBH_MOD:'+str(avg_counts[4])+'; std UCBH_MOD:'+str(std_counts[4]))
 #    text_file.write('; counts UCBVT:'+str(avg_counts[5])+'; std UCBVT:'+str(std_counts[5]))
 
 
 
     fig, ax = plt.subplots()
-    ax.errorbar(x, avg_regret[0], yerr=std_regret[0],fmt='r-', label='UCB-C')
+    ax.errorbar(x, avg_regret[0], yerr=std_regret[0],fmt='r-', label='UCB-N_MOD')
     ax.errorbar(x, avg_regret[1], yerr=std_regret[1],fmt='k-', label='UCB-N')
     ax.errorbar(x, avg_regret[2], yerr=std_regret[2],fmt='b-', label='UCB-H')
     ax.errorbar(x, avg_regret[3], yerr=std_regret[3],fmt='g-', label='UCB-D')
-    ax.errorbar(x, avg_regret[4], yerr=std_regret[4],fmt='c-', label='UCB-HN')
+    ax.errorbar(x, avg_regret[4], yerr=std_regret[4],fmt='c-', label='UCB-H_MOD')
 #    ax.errorbar(x, avg_regret[5], yerr=std_regret[5],fmt='y-', label='UCB-VT')
     ax.axhline(y=0.0,c="magenta",linewidth=2,zorder=10)
     legend = ax.legend(loc='upper right', shadow=True)
@@ -841,11 +885,11 @@ def plotting(c,alpha,K,text_file):
     plt.savefig('./regret_K'+str(len(experts))+'_c'+str(c)+'.png')
 
     fig, ax = plt.subplots()
-    ax.errorbar(x, avg_losses[0], yerr=std_losses[0],fmt='r-', label='UCB-C')
+    ax.errorbar(x, avg_losses[0], yerr=std_losses[0],fmt='r-', label='UCB-N_MOD')
     ax.errorbar(x, avg_losses[1], yerr=std_losses[1],fmt='k-', label='UCB-N')
     ax.errorbar(x, avg_losses[2], yerr=std_losses[2],fmt='b-', label='UCB-H')
     ax.errorbar(x, avg_losses[3], yerr=std_losses[3],fmt='g-', label='UCB-D')
-    ax.errorbar(x, avg_losses[4], yerr=std_losses[4],fmt='c-', label='UCB-HN')
+    ax.errorbar(x, avg_losses[4], yerr=std_losses[4],fmt='c-', label='UCB-H_MOD')
 #    ax.errorbar(x, avg_losses[5], yerr=std_losses[5],fmt='y-', label='UCB-VT')
     ax.axhline(y=0.0,c="magenta",linewidth=2,zorder=10)
     legend = ax.legend(loc='upper right', shadow=True)
@@ -855,11 +899,11 @@ def plotting(c,alpha,K,text_file):
     plt.savefig('./losses_K'+str(len(experts))+'_c'+str(c)+'.png')
 
     fig, ax = plt.subplots()
-    ax.errorbar(x, avg_counts[0], yerr=std_counts[0],fmt='r-', label='UCB-C')
+    ax.errorbar(x, avg_counts[0], yerr=std_counts[0],fmt='r-', label='UCB-N_MOD')
     ax.errorbar(x, avg_counts[1], yerr=std_counts[1],fmt='k-', label='UCB-N')
     ax.errorbar(x, avg_counts[2], yerr=std_counts[2],fmt='b-', label='UCB-H')
     ax.errorbar(x, avg_counts[3], yerr=std_counts[3],fmt='g-', label='UCB-D')
-    ax.errorbar(x, avg_counts[4], yerr=std_counts[4],fmt='c-', label='UCB-HN')
+    ax.errorbar(x, avg_counts[4], yerr=std_counts[4],fmt='c-', label='UCB-H_MOD')
 #    ax.errorbar(x, avg_counts[5], yerr=std_counts[5],fmt='y-', label='UCB-VT')
     legend = ax.legend(loc='upper right', shadow=True)
     plt.xlabel('Rounds')
