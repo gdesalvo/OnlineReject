@@ -340,6 +340,63 @@ def ucbn_mod(c, alpha, experts, dat, return_rounds, one_d):
             enum_return_rounds+=1
     return loss_alg_at_return_rounds,count_rej_at_return_rounds
 
+def ucbmax(c, alpha, experts, dat, return_rounds, one_d):
+
+    loss_alg_at_return_rounds=[]
+    count_rej_at_return_rounds=[]
+    enum_return_rounds=0
+    K = len(experts)
+    T = len(dat)
+#    print '\n\n UCB N'
+    expert_avg = [0.0]*K
+    expert_pulls = [0.0] * K 
+    loss_alg = 0
+    count_rej=0
+
+
+    for t in range(T):
+        #find best arm
+        lcb_list=[max(expert_avg[i] - lcb_bound(t, expert_pulls[i], alpha), 0.0) for i in range(K)] #soinefficient
+        best_lcb_arm = lcb_list.index(min(lcb_list)) 
+        #update regret
+        best_lcb_expert_label = exp_label(dat[t][0], experts[best_lcb_arm],one_d)
+        if best_lcb_expert_label==-1:
+            #if rejecting, then one with smallest expert_avg b/c will always see best_lcb_expert gettin updated
+            best_arm=expert_avg.index(min(expert_avg))
+        else:
+            #if bestlcb is accepting then pick out of accepting ones the one with smallest emp mean
+            best_arm=best_lcb_expert_label
+            for i in range(K):
+                if exp_label(dat[t][0],experts[i],one_d)!=1 and expert_avg[i] < expert_avg[best_arm]: 
+                    best_arm=i
+                
+#        best_lcb_expert_loss = rej_loss(dat[t][1], expert_label, c) 
+        expert_label = exp_label(dat[t][0], experts[best_arm],one_d)
+        expert_loss = rej_loss(dat[t][1], expert_label, c) 
+#        print best_arm,expert_loss
+        loss_alg += expert_loss
+#        print str(dat[t][0])+","+str(best_arm)+","+ str(experts[best_arm])+",   " +str(expert_loss)+","+str(loss_alg) +","+ 'ucbN'
+        if expert_label == -1:
+            count_rej+=1
+            #update only rejecting experts since "never" receive true label
+            for i in range(K): #soinefficient
+                if exp_label(dat[t][0], experts[i],one_d) == -1:
+                    expert_pulls[i] += 1
+                    inv_pull = 1.0 / expert_pulls[i]
+                    expert_avg[i] = c * inv_pull + (1 - inv_pull) * expert_avg[i]
+        else:
+            #update all experts since received true label. 
+            for i in range(K): 
+                expert_pulls[i] += 1
+                inv_pull = 1.0 / expert_pulls[i]
+                current_loss = rej_loss(dat[t][1], exp_label(dat[t][0], experts[i],one_d), c) 
+                expert_avg[i] = current_loss * inv_pull + (1 - inv_pull) * expert_avg[i]
+        if enum_return_rounds < len(return_rounds) and t+1==return_rounds[enum_return_rounds]:
+            loss_alg_at_return_rounds.append(loss_alg/float(t+1))
+            count_rej_at_return_rounds.append(count_rej/float(t+1))
+            enum_return_rounds+=1
+    return loss_alg_at_return_rounds,count_rej_at_return_rounds
+
 def ucbcc(c, alpha, experts, dat,return_rounds, one_d):
 
     loss_alg_at_return_rounds=[]
@@ -783,10 +840,10 @@ def ucbvt(c, alpha, experts, dat,return_rounds, one_d):
 ############# ############# ############# ############# #############  PLOTTING ############# ############# ############# ############# ############# 
 def plotting(c,alpha,K,text_file):
 #NEED TO IMRPOVE THIS PLOTTING FUNCTION BC IT SUCKS
-    ONE_D=False   #one_d determines if you want to use 1d experts (True) vs 2d experts (False) 
-    TYPE_DATA=1  #type_data determines if you want (0) 1d data drawn from gaussian(0.6,0.3), (1) 2d data drawn uniformly on [-1,1]X[-1,1] square, (2) loads 1d cifar data set
-    NUM_AVG=1
-    T_MAX=500
+    ONE_D=True   #one_d determines if you want to use 1d experts (True) vs 2d experts (False) 
+    TYPE_DATA=2  #type_data determines if you want (0) 1d data drawn from gaussian(0.6,0.3), (1) 2d data drawn uniformly on [-1,1]X[-1,1] square, (2) loads 1d cifar data set
+    NUM_AVG=2
+    T_MAX=1000
     avg_regret=[]
     avg_counts=[]
     avg_losses=[]
@@ -805,7 +862,7 @@ def plotting(c,alpha,K,text_file):
                 loss1,countrej1=ucbn_mod(c,alpha,experts,data,x,ONE_D) #returns values of all needed roudns
                 loss2,countrej2=ucbn(c,alpha,experts,data,x,ONE_D)
                 loss3,countrej3=ucbh(c,alpha,experts,data,x,ONE_D)
-                loss4,countrej4=ucbd(c,alpha,experts,data,x,ONE_D)
+                loss4,countrej4=ucbmax(c,alpha,experts,data,x,ONE_D)
                 loss5,countrej5=ucbh_mod(c,alpha,experts,data,x,ONE_D)
                 #loss6,countrej6=ucbvt(c,alpha,experts,data,x)
                 expert_loss.append(loss_experts)
@@ -838,21 +895,21 @@ def plotting(c,alpha,K,text_file):
     text_file.write('; regret UCBN_MOD:'+str(avg_regret[0])+'; std UCBN_MOD:'+str(std_regret[0]))
     text_file.write('; regret UCBN:'+str(avg_regret[1])+'; std UCBN:'+str(std_regret[1]))
     text_file.write('; regret UCBH:'+str(avg_regret[2])+'; std UCBH:'+str(std_regret[2]))
-    text_file.write('; regret UCBD:'+str(avg_regret[3])+'; std UCBD:'+str(std_regret[3]))
+    text_file.write('; regret UCBMAX:'+str(avg_regret[3])+'; std UCBMAX:'+str(std_regret[3]))
     text_file.write('; regret UCBH_MOD:'+str(avg_regret[4])+'; std UCBH_MOD:'+str(std_regret[4]))
 #    text_file.write('; regret UCBVT:'+str(avg_regret[5])+'; std UCBVT:'+str(std_regret[5]))
 
     text_file.write('; losses UCBN_MOD:'+str(avg_losses[0])+'; std UCBN_MOD:'+str(std_losses[0]))
     text_file.write('; losses UCBN:'+str(avg_losses[1])+'; std UCBN:'+str(std_losses[1]))
     text_file.write('; losses UCBH:'+str(avg_losses[2])+'; std UCBH:'+str(std_losses[2]))
-    text_file.write('; losses UCBD:'+str(avg_losses[3])+'; std UCBD:'+str(std_losses[3]))
+    text_file.write('; losses UCBMAX:'+str(avg_losses[3])+'; std UCBMAX:'+str(std_losses[3]))
     text_file.write('; losses UCBH_MOD:'+str(avg_losses[4])+'; std UCBH_MOD:'+str(std_losses[4]))
 #    text_file.write('; losses UCBVT:'+str(avg_losses[5])+'; std UCBVT:'+str(std_losses[5]))
 
     text_file.write('; counts UCBN_MOD:'+str(avg_counts[0])+'; std UCBN_MOD:'+str(std_counts[0]))
     text_file.write('; counts UCBN:'+str(avg_counts[1])+'; std UCBN:'+str(std_counts[1]))
     text_file.write('; counts UCBH:'+str(avg_counts[2])+'; std UCBH:'+str(std_counts[2]))
-    text_file.write('; counts UCBD:'+str(avg_counts[3])+'; std UCBD:'+str(std_counts[3]))
+    text_file.write('; counts UCBMAX:'+str(avg_counts[3])+'; std UCBMAX:'+str(std_counts[3]))
     text_file.write('; counts UCBH_MOD:'+str(avg_counts[4])+'; std UCBH_MOD:'+str(std_counts[4]))
 #    text_file.write('; counts UCBVT:'+str(avg_counts[5])+'; std UCBVT:'+str(std_counts[5]))
 
@@ -862,11 +919,14 @@ def plotting(c,alpha,K,text_file):
     ax.errorbar(x, avg_regret[0], yerr=std_regret[0],fmt='r-', label='UCB-N_MOD')
     ax.errorbar(x, avg_regret[1], yerr=std_regret[1],fmt='k-', label='UCB-N')
     ax.errorbar(x, avg_regret[2], yerr=std_regret[2],fmt='b-', label='UCB-H')
-    ax.errorbar(x, avg_regret[3], yerr=std_regret[3],fmt='g-', label='UCB-D')
+    ax.errorbar(x, avg_regret[3], yerr=std_regret[3],fmt='g-', label='UCB-MAX')
     ax.errorbar(x, avg_regret[4], yerr=std_regret[4],fmt='c-', label='UCB-H_MOD')
 #    ax.errorbar(x, avg_regret[5], yerr=std_regret[5],fmt='y-', label='UCB-VT')
     ax.axhline(y=0.0,c="magenta",linewidth=2,zorder=10)
-    legend = ax.legend(loc='upper right', shadow=True)
+#    legend = ax.legend(loc='upper right', shadow=True)
+    box = ax.get_position()
+    ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+    ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
     plt.xlabel('Rounds')
     plt.ylabel('Pseudo-Regret')
     plt.title('Pseudo-Regret of UCB-type Algorithms for '+str(len(experts))+' arms with c '+str(c))
@@ -876,11 +936,14 @@ def plotting(c,alpha,K,text_file):
     ax.errorbar(x, avg_losses[0], yerr=std_losses[0],fmt='r-', label='UCB-N_MOD')
     ax.errorbar(x, avg_losses[1], yerr=std_losses[1],fmt='k-', label='UCB-N')
     ax.errorbar(x, avg_losses[2], yerr=std_losses[2],fmt='b-', label='UCB-H')
-    ax.errorbar(x, avg_losses[3], yerr=std_losses[3],fmt='g-', label='UCB-D')
+    ax.errorbar(x, avg_losses[3], yerr=std_losses[3],fmt='g-', label='UCB-MAX')
     ax.errorbar(x, avg_losses[4], yerr=std_losses[4],fmt='c-', label='UCB-H_MOD')
 #    ax.errorbar(x, avg_losses[5], yerr=std_losses[5],fmt='y-', label='UCB-VT')
     ax.axhline(y=0.0,c="magenta",linewidth=2,zorder=10)
-    legend = ax.legend(loc='upper right', shadow=True)
+#    legend = ax.legend(loc='upper right', shadow=True)
+    box = ax.get_position()
+    ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+    ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
     plt.xlabel('Rounds')
     plt.ylabel(' Losses')
     plt.title('Losses of UCB-type Algorithms for '+str(len(experts))+' arms with c '+str(c))
@@ -890,10 +953,14 @@ def plotting(c,alpha,K,text_file):
     ax.errorbar(x, avg_counts[0], yerr=std_counts[0],fmt='r-', label='UCB-N_MOD')
     ax.errorbar(x, avg_counts[1], yerr=std_counts[1],fmt='k-', label='UCB-N')
     ax.errorbar(x, avg_counts[2], yerr=std_counts[2],fmt='b-', label='UCB-H')
-    ax.errorbar(x, avg_counts[3], yerr=std_counts[3],fmt='g-', label='UCB-D')
+    ax.errorbar(x, avg_counts[3], yerr=std_counts[3],fmt='g-', label='UCB-MAX')
     ax.errorbar(x, avg_counts[4], yerr=std_counts[4],fmt='c-', label='UCB-H_MOD')
 #    ax.errorbar(x, avg_counts[5], yerr=std_counts[5],fmt='y-', label='UCB-VT')
-    legend = ax.legend(loc='upper right', shadow=True)
+ #   legend = ax.legend(loc='upper right', shadow=True)
+    box = ax.get_position()
+    ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+    ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+
     plt.xlabel('Rounds')
     plt.ylabel('Fraction of Rejection')
     plt.title('Fraction of Rejection for '+str(len(experts))+' arms with c '+str(c))
