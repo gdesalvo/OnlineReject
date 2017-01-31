@@ -367,7 +367,7 @@ def ucbmax(c, alpha, experts, dat, return_rounds, one_d):
             #if bestlcb is accepting then pick out of accepting ones the one with smallest emp mean
             best_arm=best_lcb_expert_label
             for i in range(K):
-                if exp_label(dat[t][0],experts[i],one_d)!=1 and expert_avg[i] < expert_avg[best_arm]: 
+                if exp_label(dat[t][0],experts[i],one_d)!=-1 and expert_avg[i] < expert_avg[best_arm]: 
                     best_arm=i
                 
 #        best_lcb_expert_loss = rej_loss(dat[t][1], expert_label, c) 
