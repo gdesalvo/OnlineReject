@@ -310,7 +310,7 @@ def ucbn_mod(c, alpha, experts, dat, return_rounds, one_d):
 
     for t in range(T):
         #find best arm
-        lcb_list=[max(expert_avg[i] - lcb_bound(t, expert_pulls[i], alpha), 0.0) for i in range(K)] #soinefficient
+        lcb_list=[max(expert_avg[i] , 0.0) for i in range(K)] #soinefficient
         best_arm = lcb_list.index(min(lcb_list)) 
         #update regret
         expert_label = exp_label(dat[t][0], experts[best_arm],one_d)
@@ -323,9 +323,10 @@ def ucbn_mod(c, alpha, experts, dat, return_rounds, one_d):
             count_rej+=1
             #update only rejecting experts since "never" receive true label
             for i in range(K): #soinefficient
-                expert_pulls[i] += 1
-                inv_pull = 1.0 / expert_pulls[i]
-                expert_avg[i] = c * inv_pull + (1 - inv_pull) * expert_avg[i]
+                if exp_label(dat[t][0], experts[i],one_d) == -1:
+                    expert_pulls[i] += 1
+                    inv_pull = 1.0 / expert_pulls[i]
+                    expert_avg[i] = c * inv_pull + (1 - inv_pull) * expert_avg[i]
         else:
             #update all experts since received true label. 
             for i in range(K): 
@@ -368,9 +369,9 @@ def ucbcc(c, alpha, experts, dat,return_rounds, one_d):
             exp_prob_acc = expert_cnt_acc[i] / (t+1)
             exp_prob_rej = 1 - exp_prob_acc
             if exp_label(dat[t][0],experts[i],one_d)!=-1:
-                expert_lcbs.append(max(exp_prob_acc - lcb_bound(t+1, t+1, alpha),0.0) * max((expert_hyp_losses[i] / max(expert_pulls[i],1)) - lcb_bound(t+1, expert_pulls[i], alpha),0.0))
+                expert_lcbs.append(max(exp_prob_acc ,0.0) * max((expert_hyp_losses[i] / max(expert_pulls[i],1)),0.0))
             else:
-                expert_lcbs.append(max(exp_prob_rej - lcb_bound(t+1, t+1, alpha), 0.0) * c) 
+                expert_lcbs.append(max(exp_prob_rej , 0.0) * c) 
         
         #find best arm
         best_arm = expert_lcbs.index(min(expert_lcbs)) 
@@ -529,6 +530,7 @@ def ucbh(c, alpha, experts, dat,return_rounds,one_d):
 
 
 def ucbh_mod(c, alpha, experts, dat,return_rounds,one_d):
+
     loss_alg_at_return_rounds=[]
     count_rej_at_return_rounds=[]
     enum_return_rounds=0
@@ -565,12 +567,12 @@ def ucbh_mod(c, alpha, experts, dat,return_rounds,one_d):
             save_expert_labels.append(expert_label)
             if expert_label!=-1:
                 if str(i) in hyp_expert_avg.keys():
-                    acc_exp[str(i)] = max(hyp_expert_avg[str(i)] - lcb_bound(t,expert_pulls[i],alpha), 0.0)
+                    acc_exp[str(i)] = max(hyp_expert_avg[str(i)], 0.0)
                 else:
                     acc_exp[str(i)] = 0.0  # -float("inf")  #if you never pulled an arm before the LCB is -inf
             else:
                 if str(i) in hyp_expert_avg.keys():
-                    rej_exp[str(i)] = max(hyp_expert_avg[str(i)] - lcb_bound(t,expert_pulls[i],alpha), 0.0)
+                    rej_exp[str(i)] = max(hyp_expert_avg[str(i)], 0.0)
                 else:
                     rej_exp[str(i)] = 0.0  # -float("inf")
                     
@@ -603,25 +605,11 @@ def ucbh_mod(c, alpha, experts, dat,return_rounds,one_d):
                         else:
                             expert_pulls[jj] += 1
                             hyp_expert_avg[str(jj)] = rej_loss(dat[t][1], save_expert_labels[jj], c)
-        else:
-            for jj in range(len(save_expert_labels)):
-                if save_expert_labels[jj] != -1:
-                        if str(jj) in hyp_expert_avg.keys():
-                            expert_pulls[jj] += 1
-                            inv_pull = 1.0 / expert_pulls[jj]
-                            hyp_expert_avg[str(jj)] = c * inv_pull + (1.0 - inv_pull) * hyp_expert_avg[str(jj)]
-                        else:
-                            expert_pulls[jj] += 1
-                            hyp_expert_avg[str(jj)] = c
-
-            
         if enum_return_rounds < len(return_rounds) and t+1==return_rounds[enum_return_rounds]:
             loss_alg_at_return_rounds.append(loss_alg/float(t+1))
             count_rej_at_return_rounds.append(count_rej/float(t+1))
             enum_return_rounds+=1
     return loss_alg_at_return_rounds,count_rej_at_return_rounds
-
-
 
 
 def ucbt(c, alpha, experts, dat,return_rounds, one_d):
@@ -795,10 +783,10 @@ def ucbvt(c, alpha, experts, dat,return_rounds, one_d):
 ############# ############# ############# ############# #############  PLOTTING ############# ############# ############# ############# ############# 
 def plotting(c,alpha,K,text_file):
 #NEED TO IMRPOVE THIS PLOTTING FUNCTION BC IT SUCKS
-    ONE_D=True   #one_d determines if you want to use 1d experts (True) vs 2d experts (False) 
-    TYPE_DATA=2  #type_data determines if you want (0) 1d data drawn from gaussian(0.6,0.3), (1) 2d data drawn uniformly on [-1,1]X[-1,1] square, (2) loads 1d cifar data set
+    ONE_D=False   #one_d determines if you want to use 1d experts (True) vs 2d experts (False) 
+    TYPE_DATA=1  #type_data determines if you want (0) 1d data drawn from gaussian(0.6,0.3), (1) 2d data drawn uniformly on [-1,1]X[-1,1] square, (2) loads 1d cifar data set
     NUM_AVG=1
-    T_MAX=5000
+    T_MAX=500
     avg_regret=[]
     avg_counts=[]
     avg_losses=[]
