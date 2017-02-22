@@ -695,7 +695,7 @@ def ucbd(c, alpha, experts, dat,return_rounds, one_d):
         for i in range(K):
             exp_prob_acc = expert_cnt_acc[i] / (t+1)
             exp_prob_rej = 1 - exp_prob_acc
-            expert_lcbs.append(max(exp_prob_acc - lcb_bound(t+1, t+1, alpha), 0.0) * max((expert_hyp_losses[i] / max(expert_pulls[i],1)) - lcb_bound(t+1, expert_pulls[i], alpha), 0.0) + max(exp_prob_rej - lcb_bound(t+1, t+1, alpha), 0.0) * c) 
+            expert_lcbs.append(max((expert_hyp_losses[i] / max(expert_pulls[i],1)) - lcb_bound(t+1, expert_pulls[i], alpha), 0.0) + max(exp_prob_rej - lcb_bound(t+1, t+1, alpha), 0.0) * c) 
         
         #find best arm
         best_arm = expert_lcbs.index(min(expert_lcbs)) 
@@ -707,9 +707,17 @@ def ucbd(c, alpha, experts, dat,return_rounds, one_d):
             count_rej+=1
         loss_alg += expert_loss
 
+        if expert_label == -1:
+            for i in range(K):
+                if exp_label(dat[t][0], experts[i],one_d) == -1:
+                    expert_pulls[i] += 1
+        else:
+            for i in range(K): 
+                expert_pulls[i] += 1
+
         if expert_label != -1:  # so that we see the label
             for i in range(K):
-                expert_pulls[i] += 1
+                # expert_pulls[i] += 1
                 current_label = exp_hyp_label(dat[t][0], experts[i],one_d)
                 current_loss = rej_loss(dat[t][1], current_label, c)
                 expert_hyp_losses[i] += current_loss 
